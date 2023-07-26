@@ -1,0 +1,5 @@
+BootStrap: docker
+From: bioconductor/bioconductor_docker:RELEASE_3_17
+
+%post
+    Rscript -e 'BiocManager::install(c("bambu", "tidyverse"))'

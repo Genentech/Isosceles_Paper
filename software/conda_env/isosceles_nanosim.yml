@@ -1,0 +1,8 @@
+name: isosceles_nanosim
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - minimap2=2.24
+  - nanosim=3.1.0

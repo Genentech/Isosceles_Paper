@@ -1,0 +1,305 @@
+---
+title: "Simulated scRNA-Seq data benchmarks"
+output:
+  html_document:
+    highlight: pygments
+    df_print: paged
+    toc: true
+    toc_depth: 2
+---
+
+# Preparing the data
+
+Load the required packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(glue)
+library(Matrix)
+library(Hmisc)
+library(SingleCellExperiment)
+```
+
+Global parameters:
+```{r}
+result_dir <- file.path("..", "simulated_sc_analysis", "report_data")
+```
+
+Helper functions:
+```{r}
+fill_missing_matrix <- function(x, all_rownames) {
+    missing_rownames <- setdiff(all_rownames, rownames(x))
+    missing_matrix <- as.matrix(Matrix(
+        0, nrow = length(missing_rownames), ncol = ncol(x)
+    ))
+    rownames(missing_matrix) <- missing_rownames
+    full_matrix <- rbind(x, missing_matrix)
+    full_matrix <- full_matrix[all_rownames,]
+    return(full_matrix)
+}
+median_rel_diff <- function(x, y) {
+    median(abs(x - y) / ((x + y) / 2))
+}
+mean_rel_diff <- function(x, y) {
+    mean(abs(x - y) / ((x + y) / 2))
+}
+```
+
+Prepare transcript class (i.e. unique intron structure) data:
+```{r, message = FALSE, warning = FALSE}
+se_transcript <- readRDS(file.path(
+    result_dir, "isosceles_se_transcript.rds"
+))
+tx_df <- rowData(se_transcript)[, c("intron_positions", "compatible_tx")]
+tx_df <- as.data.frame(tx_df)
+rownames(tx_df) <- NULL
+tx_df$compatible_tx <- strsplit(tx_df$compatible_tx, ",")
+tx_df <- unchop(tx_df, compatible_tx)
+tx_df$class_id <- as.numeric(as.factor(tx_df$intron_positions))
+tx2class <- setNames(tx_df$class_id, tx_df$compatible_tx)
+all_class_ids <- as.character(sort(unique(tx2class)))
+```
+
+Prepare reference TPM data:
+```{r, message = FALSE, warning = FALSE}
+ref_tpm_df <- read.delim(file.path("..", "reference_data",
+                                   "benchmark_transcript_expression.tab"))
+ref_class_ids <- unname(tx2class[ref_tpm_df$target_id])
+ref_tpm <- unname(tapply(ref_tpm_df$tpm, ref_class_ids, sum))
+```
+
+Prepare reference TPM quantile data:
+```{r, message = FALSE, warning = FALSE}
+ref_quantile <- ceiling(seq_along(ref_tpm) * 33/length(ref_tpm)) * 99/33
+ref_quantile <- ref_quantile[rank(ref_tpm, ties.method = 'first')]
+```
+
+Prepare Isosceles TPM data:
+```{r, message = FALSE, warning = FALSE}
+isosceles_tpm <- assay(se_transcript, "tpm")
+isosceles_class_ids <- unname(tx2class[
+    sapply(strsplit(rowData(se_transcript)$compatible_tx, ","), "[", 1)
+])
+isosceles_tpm <- rowsum(assay(se_transcript, "tpm"), isosceles_class_ids)
+```
+
+Prepare Isosceles pseudobulk TPM data:
+```{r, message = FALSE, warning = FALSE}
+se_pseudobulk_transcript <- readRDS(file.path(
+    result_dir, "isosceles_se_pseudobulk_transcript.rds"
+))
+isosceles_pseudobulk_tpm <- assay(se_pseudobulk_transcript, "tpm")[, 1]
+isosceles_pseudobulk_class_ids <- unname(tx2class[
+    sapply(strsplit(rowData(se_pseudobulk_transcript)$compatible_tx,","),
+           "[", 1)
+])
+isosceles_pseudobulk_tpm <- as.numeric(unname(tapply(
+    isosceles_pseudobulk_tpm, isosceles_pseudobulk_class_ids, sum
+)))
+```
+
+Prepare IsoQuant TPM data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_df <- read_delim(file.path(
+    result_dir, "isoquant_transcript_grouped_tpm.tsv"
+))
+isoquant_rowdata <- as.data.frame(isoquant_df[, 1])
+isoquant_tpm <- as.matrix(isoquant_df[, c(-1)])
+isoquant_tpm <- as(isoquant_tpm, "dgCMatrix")
+rownames(isoquant_tpm) <- isoquant_rowdata[[1]]
+isoquant_class_ids <- unname(tx2class[rownames(isoquant_tpm)])
+isoquant_tpm <- rowsum(isoquant_tpm, isoquant_class_ids)
+isoquant_tpm <- fill_missing_matrix(isoquant_tpm, all_class_ids)
+```
+
+Prepare IsoQuant pseudobulk TPM data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_pseudobulk_tpm <- rowSums(isoquant_tpm)
+isoquant_pseudobulk_tpm <- isoquant_pseudobulk_tpm /
+    sum(isoquant_pseudobulk_tpm) * 1e6
+```
+
+Prepare FLAMES TPM data:
+```{r, message = FALSE, warning = FALSE}
+flames_df <- read_csv(file.path(
+    result_dir, "flames_transcript_count.csv.gz"
+))
+flames_rowdata <- as.data.frame(flames_df[, 1:2])
+flames_counts <- as.matrix(flames_df[, c(-1, -2)])
+flames_counts <- as(flames_counts, "dgCMatrix")
+rownames(flames_counts) <- flames_rowdata$transcript_id
+flames_tx_selector <- !grepl("_", rownames(flames_counts))
+flames_counts <- flames_counts[flames_tx_selector,]
+flames_tpm <- t(t(flames_counts) / colSums(flames_counts) * 1e6)
+flames_class_ids <- unname(tx2class[rownames(flames_tpm)])
+flames_tpm <- rowsum(flames_tpm, flames_class_ids)
+flames_tpm <- fill_missing_matrix(flames_tpm, all_class_ids)
+```
+
+Prepare FLAMES pseudobulk TPM data:
+```{r, message = FALSE, warning = FALSE}
+flames_pseudobulk_tpm <- rowSums(flames_tpm)
+flames_pseudobulk_tpm <- flames_pseudobulk_tpm /
+    sum(flames_pseudobulk_tpm) * 1e6
+```
+
+Prepare Sicelore TPM data:
+```{r, message = FALSE, warning = FALSE}
+sicelore_df <- read_delim(file.path(
+    result_dir, "sicelore_isomatrix.txt"
+))
+sicelore_rowdata <- as.data.frame(sicelore_df[, 1:3])
+sicelore_counts <- as.matrix(sicelore_df[, c(-1, -2, -3)])
+sicelore_counts <- as(sicelore_counts, "dgCMatrix")
+rownames(sicelore_counts) <- sicelore_rowdata$transcriptId
+sicelore_counts <- sicelore_counts[rownames(sicelore_counts) != "undef",]
+sicelore_tpm <- t(t(sicelore_counts) / colSums(sicelore_counts) * 1e6)
+sicelore_class_ids <- unname(tx2class[rownames(sicelore_tpm)])
+sicelore_tpm <- rowsum(sicelore_tpm, sicelore_class_ids)
+sicelore_tpm <- fill_missing_matrix(sicelore_tpm, all_class_ids)
+```
+
+Prepare Sicelore pseudobulk TPM data:
+```{r, message = FALSE, warning = FALSE}
+sicelore_pseudobulk_tpm <- rowSums(sicelore_tpm)
+sicelore_pseudobulk_tpm <- sicelore_pseudobulk_tpm /
+    sum(sicelore_pseudobulk_tpm) * 1e6
+```
+
+# Relative difference plots
+
+## Individual cells
+
+```{r, message = FALSE, warning = FALSE, eval=TRUE}
+sc_df <- data.frame(
+    ref_tpm = ref_tpm,
+    ref_quantile = ref_quantile,
+    Isosceles = as.numeric(isosceles_tpm),
+    IsoQuant = as.numeric(isoquant_tpm),
+    FLAMES = as.numeric(flames_tpm),
+    Sicelore = as.numeric(sicelore_tpm)
+) %>%
+    gather(key = "tool", value = "estimated_tpm",
+           Isosceles, IsoQuant, FLAMES, Sicelore)
+sc_rel_diff_df <- sc_df %>%
+    group_by(ref_quantile, tool) %>%
+    summarise(
+        mean_rel_diff = mean_rel_diff(ref_tpm, estimated_tpm),
+        median_rel_diff = median_rel_diff(ref_tpm, estimated_tpm)
+    ) %>%
+    ungroup()
+ggplot(sc_rel_diff_df, mapping = aes(x = ref_quantile,
+                                     y = mean_rel_diff,
+                                     col = tool)) +
+    geom_line(size = 1) +
+    scale_color_manual(values = c(Isosceles = "black",
+                                  IsoQuant = "gold",
+                                  FLAMES = "tomato",
+                                  Sicelore = "royalblue")) +
+    labs(
+        x = "Reference TPM quantile",
+        y = "Mean rel. diff.",
+        col = ""
+    ) +
+    theme_bw() +
+    theme(aspect.ratio = 1,
+          legend.title = element_blank())
+```
+
+## Pseudobulk data
+
+```{r, message = FALSE, warning = FALSE}
+pseudobulk_df <- data.frame(
+    ref_tpm = ref_tpm,
+    ref_quantile = ref_quantile,
+    Isosceles = isosceles_pseudobulk_tpm,
+    IsoQuant = isoquant_pseudobulk_tpm,
+    FLAMES = flames_pseudobulk_tpm,
+    Sicelore = sicelore_pseudobulk_tpm
+) %>%
+    gather(key = "tool", value = "estimated_tpm",
+           Isosceles, IsoQuant, FLAMES, Sicelore)
+pseudobulk_rel_diff_df <- pseudobulk_df %>%
+    group_by(ref_quantile, tool) %>%
+    summarise(
+        mean_rel_diff = mean_rel_diff(ref_tpm, estimated_tpm),
+        median_rel_diff = median_rel_diff(ref_tpm, estimated_tpm)
+    ) %>%
+    ungroup()
+ggplot(pseudobulk_rel_diff_df,
+       mapping = aes(x = ref_quantile,
+                     y = mean_rel_diff,
+                     col = tool)) +
+    geom_line(size = 1) +
+    scale_color_manual(values = c(Isosceles = "black",
+                                  IsoQuant = "gold",
+                                  FLAMES = "tomato",
+                                  Sicelore = "royalblue")) +
+    labs(
+        x = "Reference TPM quantile",
+        y = "Mean rel. diff.",
+        col = ""
+    ) +
+    theme_bw() +
+    theme(aspect.ratio = 1,
+          legend.title = element_blank())
+```
+
+## Joint plot
+
+```{r, message = FALSE, warning = FALSE}
+sc_df <- data.frame(
+    ref_tpm = ref_tpm,
+    ref_quantile = ref_quantile,
+    n_cells = "Single cell",
+    Isosceles = as.numeric(isosceles_tpm),
+    IsoQuant = as.numeric(isoquant_tpm),
+    FLAMES = as.numeric(flames_tpm),
+    Sicelore = as.numeric(sicelore_tpm)
+)
+pseudobulk_df <- data.frame(
+    ref_tpm = ref_tpm,
+    ref_quantile = ref_quantile,
+    n_cells = "Pseudobulk",
+    Isosceles = isosceles_pseudobulk_tpm,
+    IsoQuant = isoquant_pseudobulk_tpm,
+    FLAMES = flames_pseudobulk_tpm,
+    Sicelore = sicelore_pseudobulk_tpm
+)
+plot_data_df <- rbind(sc_df, pseudobulk_df) %>%
+    gather(key = "tool", value = "estimated_tpm",
+           Isosceles, IsoQuant, FLAMES, Sicelore)
+joint_rel_diff_df <- plot_data_df %>%
+    group_by(ref_quantile, tool, n_cells) %>%
+    summarise(
+        mean_rel_diff = mean_rel_diff(ref_tpm, estimated_tpm),
+        median_rel_diff = median_rel_diff(ref_tpm, estimated_tpm)
+    ) %>%
+    ungroup()
+ggplot(joint_rel_diff_df,
+       mapping = aes(x = ref_quantile,
+                     y = mean_rel_diff,
+                     col = tool,
+                     linetype = n_cells)) +
+    geom_line(size = 1) +
+    scale_color_manual(values = c(Isosceles = "black",
+                                  IsoQuant = "gold",
+                                  FLAMES = "tomato",
+                                  Sicelore = "royalblue")) +
+    scale_linetype_manual(values = c(`Single cell` = "dotted",
+                                     `Pseudobulk` = "solid")) +
+    labs(
+        x = "Reference TPM quantile",
+        y = "Mean rel. diff.",
+        col = "Tool",
+        linetype = "Number of cells"
+    ) +
+    theme_bw() +
+    theme(aspect.ratio = 1,
+          legend.title = element_blank())
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

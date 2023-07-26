@@ -1,0 +1,262 @@
+---
+title: "Nanopore IGROV-1 bulk RNA-Seq mean relative difference benchmarks"
+output:
+  html_document:
+    highlight: pygments
+    df_print: paged
+    toc: true
+    toc_depth: 2
+---
+
+# Preparing the data
+
+Load the required packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(glue)
+library(SingleCellExperiment)
+```
+
+Global parameters:
+```{r}
+result_dir <- file.path("..", "nanopore_bulk_analysis", "report_data")
+sample_ids <- c("LIB5432315_SAM24385458", "LIB5432316_SAM24385459",
+                "LIB5427896_SAM24376275", "LIB5427897_SAM24376276")
+min_tpm <- 1
+```
+
+Helper functions:
+```{r}
+mean_rel_diff <- function(x, y) {
+    mean(abs(x - y) / ((x + y) / 2))
+}
+calculate_mean_rel_diff <- function(tpm_data) {
+    promethion_tpm <- tpm_data[, 1:2]
+    minion_tpm <- tpm_data[, 3:4]
+    mean_tpm <- cbind(
+        rowSums(promethion_tpm) / 2,
+        rowSums(minion_tpm) / 2
+    )
+    promethion_tpm <- promethion_tpm[
+        apply(promethion_tpm, 1, mean) >= min_tpm,
+    ]
+    minion_tpm <- minion_tpm[
+        apply(minion_tpm, 1, mean) >= min_tpm,
+    ]
+    mean_tpm <- mean_tpm[
+        apply(mean_tpm, 1, mean) >= min_tpm,
+    ]
+    print(paste0("Filtered transcripts (Promethion vs Promethion): ",
+                 nrow(promethion_tpm)))
+    print(paste0("Filtered transcripts (MinION vs MinION): ",
+                 nrow(minion_tpm)))
+    print(paste0("Filtered transcripts (MinION vs Promethion): ",
+                 nrow(mean_tpm)))
+    mean_rel_diff_vector <- c(
+        MM = mean_rel_diff(minion_tpm[, 1], minion_tpm[, 2]),
+        PP = mean_rel_diff(promethion_tpm[, 1], promethion_tpm[, 2]),
+        MP = mean_rel_diff(mean_tpm[, 1], mean_tpm[, 2])
+    )
+    return(mean_rel_diff_vector)
+}
+```
+
+Prepare Isosceles relative difference data:
+```{r, message = FALSE, warning = FALSE}
+isosceles_tpm <- sapply(sample_ids, function(sample_id) {
+    se_transcript <- readRDS(file.path(
+        result_dir, glue("isosceles_{sample_id}_se_transcript.rds")
+    ))
+    return(assay(se_transcript, "tpm")[, 1])
+})
+isosceles_mean_rel_diff <- calculate_mean_rel_diff(isosceles_tpm)
+```
+
+Prepare IsoQuant relative difference data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_list <- lapply(sample_ids, function(sample_id) {
+    isoquant_df <- read_delim(file.path(
+        result_dir, glue("isoquant_{sample_id}_transcript_tpm.tsv")
+    ))
+})
+isoquant_tx_ids <- unique(unlist(sapply(
+    isoquant_list, function(df) {df[, 1, drop = TRUE]}
+)))
+isoquant_tpm <- sapply(isoquant_list, function(df) {
+    tpm_values <- df$TPM
+    names(tpm_values) <- df[, 1, drop = TRUE]
+    tpm_values <- tpm_values[isoquant_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(isoquant_tpm) <- isoquant_tx_ids
+colnames(isoquant_tpm) <- sample_ids
+isoquant_mean_rel_diff <- calculate_mean_rel_diff(isoquant_tpm)
+```
+
+Prepare bambu relative difference data:
+```{r, message = FALSE, warning = FALSE}
+bambu_tpm <- sapply(sample_ids, function(sample_id) {
+    bambu_df <- read_delim(file.path(
+        result_dir, glue("bambu_{sample_id}_counts_transcript.txt")
+    ))
+    return(setNames(bambu_df[, 3, drop = TRUE], bambu_df$TXNAME))
+})
+bambu_tpm <- t(t(bambu_tpm) / colSums(bambu_tpm) * 1e6)
+bambu_mean_rel_diff <- calculate_mean_rel_diff(bambu_tpm)
+```
+
+Prepare Flair relative difference data:
+```{r, message = FALSE, warning = FALSE}
+flair_list <- lapply(sample_ids, function(sample_id) {
+    flair_df <- read_delim(file.path(
+        result_dir, glue("flair_{sample_id}_counts_matrix.tsv")
+    ))
+    flair_df <- flair_df[grepl("^ENST", flair_df$ids),]
+    flair_df <- flair_df[!grepl("-", flair_df$ids),]
+})
+flair_tx_ids <- unique(unlist(sapply(
+    flair_list, function(df) {df$ids}
+)))
+flair_tpm <- sapply(flair_list, function(df) {
+    tpm_values <- df$sample_condition_batch
+    names(tpm_values) <- df$ids
+    tpm_values <- tpm_values[flair_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(flair_tpm) <- sapply(strsplit(flair_tx_ids, "_"), "[", 1)
+colnames(flair_tpm) <- sample_ids
+flair_tpm <- t(t(flair_tpm) / colSums(flair_tpm) * 1e6)
+flair_mean_rel_diff <- calculate_mean_rel_diff(flair_tpm)
+```
+
+Prepare NanoCount relative difference data:
+```{r, message = FALSE, warning = FALSE}
+nanocount_list <- lapply(sample_ids, function(sample_id) {
+    nanocount_df <- read_delim(file.path(
+        result_dir, glue("nanocount_{sample_id}.tsv")
+    ))
+})
+nanocount_tx_ids <- unique(unlist(sapply(
+    nanocount_list, function(df) {df$transcript_name}
+)))
+nanocount_tpm <- sapply(nanocount_list, function(df) {
+    tpm_values <- df$tpm
+    names(tpm_values) <- df$transcript_name
+    tpm_values <- tpm_values[nanocount_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(nanocount_tpm) <- nanocount_tx_ids
+colnames(nanocount_tpm) <- sample_ids
+nanocount_mean_rel_diff <- calculate_mean_rel_diff(nanocount_tpm)
+```
+
+Prepare LIQA relative difference data:
+```{r, message = FALSE, warning = FALSE}
+liqa_list <- lapply(sample_ids, function(sample_id) {
+    liqa_df <- read_delim(file.path(
+        result_dir, glue("liqa_{sample_id}.tsv")
+    ))
+})
+liqa_tx_ids <- unique(unlist(sapply(
+    liqa_list, function(df) {df$IsoformName}
+)))
+liqa_tpm <- sapply(liqa_list, function(df) {
+    tpm_values <- df$ReadPerGene_corrected
+    names(tpm_values) <- df$IsoformName
+    tpm_values <- tpm_values[liqa_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(liqa_tpm) <- liqa_tx_ids
+colnames(liqa_tpm) <- sample_ids
+liqa_tpm <- t(t(liqa_tpm) / colSums(liqa_tpm) * 1e6)
+liqa_mean_rel_diff <- calculate_mean_rel_diff(liqa_tpm)
+```
+
+Prepare ESPRESSO relative difference data:
+```{r, message = FALSE, warning = FALSE}
+espresso_list <- lapply(sample_ids, function(sample_id) {
+    espresso_df <- read_delim(file.path(
+        result_dir, glue("espresso_{sample_id}_abundance.esp")
+    ))
+    espresso_df <- espresso_df[grepl("^ENST", espresso_df$transcript_ID),]
+})
+espresso_tx_ids <- unique(unlist(sapply(
+    espresso_list, function(df) {df$transcript_ID}
+)))
+espresso_tpm <- sapply(espresso_list, function(df) {
+    tpm_values <- df$sample
+    names(tpm_values) <- df$transcript_ID
+    tpm_values <- tpm_values[espresso_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(espresso_tpm) <- espresso_tx_ids
+colnames(espresso_tpm) <- sample_ids
+espresso_tpm <- t(t(espresso_tpm) / colSums(espresso_tpm) * 1e6)
+espresso_mean_rel_diff <- calculate_mean_rel_diff(espresso_tpm)
+```
+
+# Results
+
+Results table:
+```{r, message = FALSE, warning = FALSE}
+results_df <- as.data.frame(cbind(
+    Isosceles = isosceles_mean_rel_diff,
+    IsoQuant = isoquant_mean_rel_diff,
+    Bambu = bambu_mean_rel_diff,
+    Flair = flair_mean_rel_diff,
+    NanoCount = nanocount_mean_rel_diff,
+    LIQA = liqa_mean_rel_diff,
+    ESPRESSO = espresso_mean_rel_diff
+))
+results_df
+```
+
+Prepare relative difference data:
+```{r, message = FALSE, warning = FALSE}
+results_df$platform <- rownames(results_df)
+results_df <- pivot_longer(
+    results_df, c(-platform), 
+    names_to = "tool", values_to = "mean_rel_diff"
+)
+results_df$tool <- fct_relevel(results_df$tool, "Isosceles")
+results_df$tool <- fct_rev(results_df$tool)
+results_df$platform <- factor(results_df$platform,
+                              levels = c("PP", "MM", "MP"))
+```
+
+Bulk mean relative difference plot:
+```{r, message = FALSE, warning = FALSE}
+ggplot(results_df,
+       mapping = aes(x = mean_rel_diff,
+                     y = tool,
+                     fill = tool)) +
+    geom_col() +
+    facet_grid(platform ~ .) +
+    scale_fill_manual(values = c(Bambu = "mediumseagreen",
+                                 ESPRESSO = "lightsalmon",
+                                 Flair = "mediumpurple",
+                                 Isosceles = "black",
+                                 IsoQuant = "gold",
+                                 LIQA = "deeppink",
+                                 NanoCount = "cornflowerblue")) +
+        lims(x = c(0, 1)) +
+        labs(
+           x = "Mean rel. diff.",
+           y = ""
+        ) +
+        theme_bw() +
+        theme(legend.position = "none",
+              axis.text = element_text(size = 7),
+              axis.title.y = element_blank())
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

@@ -1,0 +1,5 @@
+BootStrap: docker
+From: bioconductor/bioconductor_docker:RELEASE_3_15
+
+%post
+    Rscript -e 'BiocManager::install(c("scater", "scran", "uwot", "dittoSeq", "tidyverse", "glue", "scales", "pheatmap", "viridis", "Hmisc"))' 

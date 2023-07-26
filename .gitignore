@@ -1,0 +1,115 @@
+# ============================== main settings
+
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDS
+
+# User-specific files
+.Ruserdata
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio files
+.Rproj.user/
+*.Rproj
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+# OAuth2 token, see https://github.com/hadley/httr/releases/tag/v0.3
+.httr-oauth
+
+# knitr and R markdown default cache directories
+/*_cache/
+/cache/
+
+# Temporary files created by R markdown
+*.utf8.md
+*.knit.md
+
+# Temporary files created by Jupyter
+reports/.ipynb_checkpoints/
+
+# Reference files
+reference_data/*.fasta
+reference_data/*.fasta.fai
+reference_data/*.gtf
+reference_data/*.bed
+reference_data/*.tab
+reference_data/*.txt
+
+# Report data files
+nanopore_bulk_analysis/report_data
+nanopore_sc_analysis/report_data
+simulated_bulk_analysis/report_data
+simulated_sc_analysis/report_data
+
+# Singularity directory
+singularity/*.sif
+
+# Software directory
+software/bin/*
+!software/bin/.gitkeep
+software/git/*
+!software/git/.gitkeep
+
+# Input data directory
+input_data/bam_sim/*
+!input_data/bam_sim/.gitkeep
+input_data/cellranger/*
+!input_data/cellranger/barcodes.tsv
+input_data/fastq_ont/*
+!input_data/fastq_ont/.gitkeep
+input_data/fastq_sim/*
+!input_data/fastq_sim/.gitkeep
+
+# Analysis results
+simulated_bulk_analysis/bam
+simulated_bulk_analysis/bambu_results
+simulated_bulk_analysis/espresso_results
+simulated_bulk_analysis/flair_results
+simulated_bulk_analysis/isoquant_results
+simulated_bulk_analysis/isosceles_results
+simulated_bulk_analysis/liqa_results
+simulated_bulk_analysis/nanocount_results
+simulated_bulk_analysis/reference_data
+simulated_bulk_analysis/stringtie_results
+simulated_sc_analysis/bam_sim
+simulated_sc_analysis/fastq
+simulated_sc_analysis/flames_results
+simulated_sc_analysis/isoquant_results
+simulated_sc_analysis/isosceles_results
+simulated_sc_analysis/reference_data
+simulated_sc_analysis/sicelore_results
+nanopore_bulk_analysis/fastq
+nanopore_bulk_analysis/bam
+nanopore_bulk_analysis/reference_data
+nanopore_bulk_analysis/isosceles_results
+nanopore_bulk_analysis/bambu_results
+nanopore_bulk_analysis/isoquant_results
+nanopore_bulk_analysis/flames_results
+nanopore_bulk_analysis/sicelore_results
+nanopore_bulk_analysis/nanocount_results
+nanopore_bulk_analysis/flair_results
+nanopore_bulk_analysis/liqa_results
+nanopore_bulk_analysis/espresso_results
+nanopore_sc_analysis/fastq
+nanopore_sc_analysis/reference_data
+nanopore_sc_analysis/flames_match_bc
+nanopore_sc_analysis/flames_results
+nanopore_sc_analysis/sicelore
+nanopore_sc_analysis/sicelore_results
+nanopore_sc_analysis/isoquant_results
+nanopore_sc_analysis/isosceles_results

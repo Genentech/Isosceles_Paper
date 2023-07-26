@@ -1,0 +1,560 @@
+---
+title: "Nanopore IGROV-1 bulk RNA-Seq and scRNA-Seq mean relative difference benchmarks"
+output:
+  html_document:
+    highlight: pygments
+    df_print: paged
+    toc: true
+    toc_depth: 2
+---
+
+# Preparing the data
+
+Load the required packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(glue)
+library(SingleCellExperiment)
+```
+
+Global parameters:
+```{r}
+bulk_dir <- file.path("..", "nanopore_bulk_analysis", "report_data")
+sc_dir <- file.path("..", "nanopore_sc_analysis", "report_data")
+souporcell_file <- file.path("..", "illumina_sc_analysis", "data",
+                             "souporcell_clusters.tsv")
+bulk_sample_ids <- c("LIB5432315_SAM24385458", "LIB5432316_SAM24385459",
+                     "LIB5427896_SAM24376275", "LIB5427897_SAM24376276")
+k_values <- c(1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 800)
+min_tpm <- 1
+n_values <- c(100, 200, 500, 1000, 2000, 5000, 10000, 15000)
+```
+
+Helper functions:
+```{r}
+fill_missing_matrix <- function(x, all_rownames) {
+    missing_rownames <- setdiff(all_rownames, rownames(x))
+    missing_matrix <- matrix(
+        0, nrow = length(missing_rownames), ncol = ncol(x)
+    )
+    rownames(missing_matrix) <- missing_rownames
+    full_matrix <- rbind(x, missing_matrix)
+    full_matrix <- full_matrix[all_rownames,]
+    return(full_matrix)
+}
+mean_rel_diff <- function(x, y) {
+    mean(abs(x - y) / ((x + y) / 2))
+}
+calculate_mean_rel_diff <- function(bulk_tpm, pseudobulk_tpm) {
+    mean_rel_diff_values <- sapply(k_values, function(k_value) {
+        mean_rel_diff(
+            bulk_tpm,
+            pseudobulk_tpm[names(bulk_tpm), as.character(k_value)]
+        )
+    })
+    names(mean_rel_diff_values) = k_values
+    return(mean_rel_diff_values)
+}
+top_n_mean_rel_diff <- function(bulk_tpm, pseudobulk_tpm, k_value) {
+    bulk_tpm_values <- sort(bulk_tpm, decreasing = TRUE)
+    pseudobulk_tpm_values <- pseudobulk_tpm[
+        names(bulk_tpm_values), as.character(k_value)
+    ]
+    mean_rel_diff_values <- sapply(n_values, function(n) {
+        if (length(bulk_tpm_values) < n) {
+            return(NA)
+        } else {
+            return(mean_rel_diff(
+                bulk_tpm_values[1:n], pseudobulk_tpm_values[1:n]
+            ))
+        }
+    })
+    return(mean_rel_diff_values)
+}
+```
+
+Prepare Isosceles bulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+isosceles_bulk_tpm <- sapply(bulk_sample_ids, function(sample_id) {
+    se_transcript <- readRDS(file.path(
+        bulk_dir, glue("isosceles_{sample_id}_se_transcript.rds")
+    ))
+    return(assay(se_transcript, "tpm")[, 1])
+})
+isosceles_bulk_promethion_tpm <- apply(isosceles_bulk_tpm[, 1:2], 1, mean)
+isosceles_bulk_promethion_tpm <- isosceles_bulk_promethion_tpm[
+    isosceles_bulk_promethion_tpm >= min_tpm
+]
+isosceles_bulk_minion_tpm <- apply(isosceles_bulk_tpm[, 3:4], 1, mean)
+isosceles_bulk_minion_tpm <- isosceles_bulk_minion_tpm[
+    isosceles_bulk_minion_tpm >= min_tpm
+]
+isosceles_bulk_tpm_list <- list(
+    Promethion = isosceles_bulk_promethion_tpm,
+    MinION = isosceles_bulk_minion_tpm
+)
+```
+
+Prepare Isosceles pseudobulk RNA-Seq data (k cells subsets):
+```{r, message = FALSE, warning = FALSE}
+isosceles_pseudobulk_tpm <- assay(readRDS(file.path(
+    sc_dir, "isosceles_se_igrov_pseudobulk_k_transcript.rds"
+)), "tpm")
+```
+
+Calculate Isosceles relative difference values:
+```{r, message = FALSE, warning = FALSE}
+isosceles_mean_rel_diff <- data.frame(
+    tool = "Isosceles",
+    platform = rep(c("Promethion", "MinION"), each = length(k_values)),
+    k_value = rep(k_values, 2),
+    mean_rel_diff = c(
+        calculate_mean_rel_diff(
+            isosceles_bulk_tpm_list[["Promethion"]],
+            isosceles_pseudobulk_tpm
+        ),
+        calculate_mean_rel_diff(
+            isosceles_bulk_tpm_list[["MinION"]],
+            isosceles_pseudobulk_tpm
+        )
+    )
+)
+```
+
+Prepare Souporcell cluster data:
+```{r, message = FALSE, warning = FALSE}
+souporcell_df <- read.delim(souporcell_file)
+souporcell_barcode <- gsub("-1$", "", souporcell_df$barcode)
+souporcell_cluster <- ifelse(souporcell_df$status == "singlet",
+                             souporcell_df$assignment,
+                             souporcell_df$status)
+souporcell_cluster <- setNames(souporcell_cluster, souporcell_barcode)
+```
+
+Prepare IsoQuant bulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_bulk_list <- lapply(bulk_sample_ids, function(sample_id) {
+    isoquant_df <- read_delim(file.path(
+        bulk_dir, glue("isoquant_{sample_id}_transcript_tpm.tsv")
+    ))
+})
+isoquant_bulk_tx_ids <- unique(unlist(sapply(
+    isoquant_bulk_list, function(df) {df[, 1, drop = TRUE]}
+)))
+isoquant_bulk_tpm <- sapply(isoquant_bulk_list, function(df) {
+    tpm_values <- df$TPM
+    names(tpm_values) <- df[, 1, drop = TRUE]
+    tpm_values <- tpm_values[isoquant_bulk_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(isoquant_bulk_tpm) <- isoquant_bulk_tx_ids
+colnames(isoquant_bulk_tpm) <- bulk_sample_ids
+isoquant_bulk_promethion_tpm <- apply(isoquant_bulk_tpm[, 1:2], 1, mean)
+isoquant_bulk_promethion_tpm <- isoquant_bulk_promethion_tpm[
+    isoquant_bulk_promethion_tpm >= min_tpm
+]
+isoquant_bulk_minion_tpm <- apply(isoquant_bulk_tpm[, 3:4], 1, mean)
+isoquant_bulk_minion_tpm <- isoquant_bulk_minion_tpm[
+    isoquant_bulk_minion_tpm >= min_tpm
+]
+isoquant_bulk_tpm_list <- list(
+    Promethion = isoquant_bulk_promethion_tpm,
+    MinION = isoquant_bulk_minion_tpm
+)
+```
+
+Prepare IsoQuant scRNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_sc_df <- read_delim(file.path(
+    sc_dir, "isoquant_transcript_grouped_tpm.tsv"
+))
+isoquant_sc_transcript_ids <- isoquant_sc_df[, 1, drop = TRUE]
+isoquant_sc_counts <- as(as.matrix(isoquant_sc_df[, c(-1)]), "dgCMatrix")
+rownames(isoquant_sc_counts) <- isoquant_sc_transcript_ids
+isoquant_sc_counts <- isoquant_sc_counts[
+    rownames(isoquant_sc_counts) %in% rownames(isoquant_bulk_tpm),
+]
+cell_labels <- souporcell_cluster[colnames(isoquant_sc_counts)]
+cell_selector <- cell_labels == "1"
+isoquant_sc_counts <- isoquant_sc_counts[, cell_selector]
+cell_order <- order(colSums(isoquant_sc_counts), decreasing = TRUE)
+isoquant_sc_counts <- isoquant_sc_counts[, cell_order]
+```
+
+Prepare IsoQuant pseudobulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_pseudobulk_tpm <- lapply(k_values, function(k_value) {
+    rowSums(isoquant_sc_counts[, 1:k_value, drop = FALSE])
+})
+isoquant_pseudobulk_tpm <- do.call(cbind, isoquant_pseudobulk_tpm)
+colnames(isoquant_pseudobulk_tpm) <- k_values
+isoquant_pseudobulk_tpm <- fill_missing_matrix(isoquant_pseudobulk_tpm,
+                                               rownames(isoquant_bulk_tpm))
+isoquant_pseudobulk_tpm <- t(
+    t(isoquant_pseudobulk_tpm) / colSums(isoquant_pseudobulk_tpm) * 1e6
+)
+```
+
+Calculate IsoQuant relative difference values:
+```{r, message = FALSE, warning = FALSE}
+isoquant_mean_rel_diff <- data.frame(
+    tool = "IsoQuant",
+    platform = rep(c("Promethion", "MinION"), each = length(k_values)),
+    k_value = rep(k_values, 2),
+    mean_rel_diff = c(
+        calculate_mean_rel_diff(
+            isoquant_bulk_tpm_list[["Promethion"]],
+            isoquant_pseudobulk_tpm
+        ),
+        calculate_mean_rel_diff(
+            isoquant_bulk_tpm_list[["MinION"]],
+            isoquant_pseudobulk_tpm
+        )
+    )
+)
+```
+
+Prepare FLAMES bulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+flames_bulk_list <- lapply(bulk_sample_ids, function(sample_id) {
+    flames_df <- read_csv(file.path(
+        bulk_dir, glue("flames_{sample_id}_transcript_count.csv.gz")
+    ))
+    flames_df <- flames_df[!grepl("_", flames_df$transcript_id),]
+    return(flames_df)
+})
+flames_bulk_tx_ids <- unique(unlist(sapply(
+    flames_bulk_list, function(df) {df$transcript_id}
+)))
+flames_bulk_tpm <- sapply(flames_bulk_list, function(df) {
+    tpm_values <- df[, 3, drop = TRUE]
+    names(tpm_values) <- df$transcript_id
+    tpm_values <- tpm_values[flames_bulk_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(flames_bulk_tpm) <- flames_bulk_tx_ids
+colnames(flames_bulk_tpm) <- bulk_sample_ids
+flames_bulk_tpm <- t(t(flames_bulk_tpm) / colSums(flames_bulk_tpm) * 1e6)
+flames_bulk_promethion_tpm <- apply(flames_bulk_tpm[, 1:2], 1, mean)
+flames_bulk_promethion_tpm <- flames_bulk_promethion_tpm[
+    flames_bulk_promethion_tpm >= min_tpm
+]
+flames_bulk_minion_tpm <- apply(flames_bulk_tpm[, 3:4], 1, mean)
+flames_bulk_minion_tpm <- flames_bulk_minion_tpm[
+    flames_bulk_minion_tpm >= min_tpm
+]
+flames_bulk_tpm_list <- list(
+    Promethion = flames_bulk_promethion_tpm,
+    MinION = flames_bulk_minion_tpm
+)
+```
+
+Prepare FLAMES scRNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+flames_sc_df <- read_csv(file.path(
+    sc_dir, "flames_transcript_count.csv.gz"
+))
+flames_sc_transcript_ids <- flames_sc_df$transcript_id
+flames_sc_counts <- as(as.matrix(flames_sc_df[, c(-1, -2)]), "dgCMatrix")
+rownames(flames_sc_counts) <- flames_sc_transcript_ids
+flames_sc_counts <- flames_sc_counts[
+    !grepl("_", rownames(flames_sc_counts)),
+]
+flames_sc_counts <- flames_sc_counts[
+    rownames(flames_sc_counts) %in% rownames(flames_bulk_tpm),
+]
+cell_labels <- souporcell_cluster[colnames(flames_sc_counts)]
+cell_selector <- cell_labels == "1"
+flames_sc_counts <- flames_sc_counts[, cell_selector]
+cell_order <- order(colSums(flames_sc_counts), decreasing = TRUE)
+flames_sc_counts <- flames_sc_counts[, cell_order]
+```
+
+Prepare FLAMES pseudobulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+flames_pseudobulk_tpm <- lapply(k_values, function(k_value) {
+    rowSums(flames_sc_counts[, 1:k_value, drop = FALSE])
+})
+flames_pseudobulk_tpm <- do.call(cbind, flames_pseudobulk_tpm)
+colnames(flames_pseudobulk_tpm) <- k_values
+flames_pseudobulk_tpm <- fill_missing_matrix(flames_pseudobulk_tpm,
+                                             rownames(flames_bulk_tpm))
+flames_pseudobulk_tpm <- t(
+    t(flames_pseudobulk_tpm) / colSums(flames_pseudobulk_tpm) * 1e6
+)
+```
+
+Calculate FLAMES relative difference values:
+```{r, message = FALSE, warning = FALSE}
+flames_mean_rel_diff <- data.frame(
+    tool = "FLAMES",
+    platform = rep(c("Promethion", "MinION"), each = length(k_values)),
+    k_value = rep(k_values, 2),
+    mean_rel_diff = c(
+        calculate_mean_rel_diff(
+            flames_bulk_tpm_list[["Promethion"]],
+            flames_pseudobulk_tpm
+        ),
+        calculate_mean_rel_diff(
+            flames_bulk_tpm_list[["MinION"]],
+            flames_pseudobulk_tpm
+        )
+    )
+)
+```
+
+Prepare Sicelore bulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+sicelore_bulk_list <- lapply(bulk_sample_ids, function(sample_id) {
+    sicelore_df <- read_delim(file.path(
+        bulk_dir, glue("sicelore_{sample_id}_sicelore_isomatrix.txt")
+    ))
+    sicelore_df <- sicelore_df[sicelore_df$transcriptId != "undef",]
+    return(sicelore_df)
+})
+sicelore_bulk_tx_ids <- unique(unlist(sapply(
+    sicelore_bulk_list, function(df) {df$transcriptId}
+)))
+sicelore_bulk_tpm <- sapply(sicelore_bulk_list, function(df) {
+    tpm_values <- df[, 4, drop = TRUE]
+    names(tpm_values) <- df$transcriptId
+    tpm_values <- tpm_values[sicelore_bulk_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(sicelore_bulk_tpm) <- sicelore_bulk_tx_ids
+colnames(sicelore_bulk_tpm) <- bulk_sample_ids
+sicelore_bulk_tpm <- t(
+    t(sicelore_bulk_tpm) / colSums(sicelore_bulk_tpm) * 1e6
+)
+sicelore_bulk_promethion_tpm <- apply(sicelore_bulk_tpm[, 1:2], 1, mean)
+sicelore_bulk_promethion_tpm <- sicelore_bulk_promethion_tpm[
+    sicelore_bulk_promethion_tpm >= min_tpm
+]
+sicelore_bulk_minion_tpm <- apply(sicelore_bulk_tpm[, 3:4], 1, mean)
+sicelore_bulk_minion_tpm <- sicelore_bulk_minion_tpm[
+    sicelore_bulk_minion_tpm >= min_tpm
+]
+sicelore_bulk_tpm_list <- list(
+    Promethion = sicelore_bulk_promethion_tpm,
+    MinION = sicelore_bulk_minion_tpm
+)
+```
+
+Prepare Sicelore scRNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+sicelore_sc_df <- read_delim(file.path(
+    sc_dir, "sicelore_isomatrix.txt"
+))
+sicelore_sc_transcript_ids <- sicelore_sc_df$transcriptId
+sicelore_sc_counts <- as(as.matrix(sicelore_sc_df[, c(-1, -2, -3)]),
+                         "dgCMatrix")
+rownames(sicelore_sc_counts) <- sicelore_sc_transcript_ids
+sicelore_sc_counts <- sicelore_sc_counts[
+    rownames(sicelore_sc_counts) != "undef",
+]
+sicelore_sc_counts <- sicelore_sc_counts[
+    rownames(sicelore_sc_counts) %in% rownames(sicelore_bulk_tpm),
+]
+cell_labels <- souporcell_cluster[colnames(sicelore_sc_counts)]
+cell_selector <- cell_labels == "1"
+sicelore_sc_counts <- sicelore_sc_counts[, cell_selector]
+cell_order <- order(colSums(sicelore_sc_counts), decreasing = TRUE)
+sicelore_sc_counts <- sicelore_sc_counts[, cell_order]
+```
+
+Prepare Sicelore pseudobulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+sicelore_pseudobulk_tpm <- lapply(k_values, function(k_value) {
+    rowSums(sicelore_sc_counts[, 1:k_value, drop = FALSE])
+})
+sicelore_pseudobulk_tpm <- do.call(cbind, sicelore_pseudobulk_tpm)
+colnames(sicelore_pseudobulk_tpm) <- k_values
+sicelore_pseudobulk_tpm <- fill_missing_matrix(sicelore_pseudobulk_tpm,
+                                               rownames(sicelore_bulk_tpm))
+sicelore_pseudobulk_tpm <- t(
+    t(sicelore_pseudobulk_tpm) / colSums(sicelore_pseudobulk_tpm) * 1e6
+)
+```
+
+Calculate Sicelore relative difference values:
+```{r, message = FALSE, warning = FALSE}
+sicelore_mean_rel_diff <- data.frame(
+    tool = "Sicelore",
+    platform = rep(c("Promethion", "MinION"), each = length(k_values)),
+    k_value = rep(k_values, 2),
+    mean_rel_diff = c(
+        calculate_mean_rel_diff(
+            sicelore_bulk_tpm_list[["Promethion"]],
+            sicelore_pseudobulk_tpm
+        ),
+        calculate_mean_rel_diff(
+            sicelore_bulk_tpm_list[["MinION"]],
+            sicelore_pseudobulk_tpm
+        )
+    )
+)
+```
+
+# Plots
+
+Prepare relative difference data:
+```{r, message = FALSE, warning = FALSE}
+results_df <- rbind(isosceles_mean_rel_diff, isoquant_mean_rel_diff,
+                    flames_mean_rel_diff, sicelore_mean_rel_diff)
+```
+
+Helper function:
+```{r}
+plot_mean_rel_diff_top_n <- function(k_value) {
+    plot_df <- list(
+        data.frame(
+            tool = "Isosceles",
+            platform = rep(c("Promethion", "MinION"),
+                           each = length(n_values)),
+            n_value = rep(n_values, 2),
+            mean_rel_diff = c(
+                top_n_mean_rel_diff(
+                    isosceles_bulk_tpm_list[["Promethion"]],
+                    isosceles_pseudobulk_tpm,
+                    k_value
+                ),
+                top_n_mean_rel_diff(
+                    isosceles_bulk_tpm_list[["MinION"]],
+                    isosceles_pseudobulk_tpm,
+                    k_value
+                )
+            )
+        ),
+        data.frame(
+            tool = "IsoQuant",
+            platform = rep(c("Promethion", "MinION"),
+                           each = length(n_values)),
+            n_value = rep(n_values, 2),
+            mean_rel_diff = c(
+                top_n_mean_rel_diff(
+                    isoquant_bulk_tpm_list[["Promethion"]],
+                    isoquant_pseudobulk_tpm,
+                    k_value
+                ),
+                top_n_mean_rel_diff(
+                    isoquant_bulk_tpm_list[["MinION"]],
+                    isoquant_pseudobulk_tpm,
+                    k_value
+                )
+            )
+        ),
+        data.frame(
+            tool = "FLAMES",
+            platform = rep(c("Promethion", "MinION"),
+                           each = length(n_values)),
+            n_value = rep(n_values, 2),
+            mean_rel_diff = c(
+                top_n_mean_rel_diff(
+                    flames_bulk_tpm_list[["Promethion"]],
+                    flames_pseudobulk_tpm,
+                    k_value
+                ),
+                top_n_mean_rel_diff(
+                    flames_bulk_tpm_list[["MinION"]],
+                    flames_pseudobulk_tpm,
+                    k_value
+                )
+            )
+        ),
+        data.frame(
+            tool = "Sicelore",
+            platform = rep(c("Promethion", "MinION"),
+                           each = length(n_values)),
+            n_value = rep(n_values, 2),
+            mean_rel_diff = c(
+                top_n_mean_rel_diff(
+                    sicelore_bulk_tpm_list[["Promethion"]],
+                    sicelore_pseudobulk_tpm,
+                    k_value
+                ),
+                top_n_mean_rel_diff(
+                    sicelore_bulk_tpm_list[["MinION"]],
+                    sicelore_pseudobulk_tpm,
+                    k_value
+                )
+            )
+        )
+    )
+    plot_df <- do.call(rbind, plot_df)
+    plot_df <- plot_df[!is.na(plot_df$mean_rel_diff),]
+    ggplot(plot_df, mapping = aes(x = n_value,
+                                  y = mean_rel_diff,
+                                  col = tool,
+                                  linetype = platform)) +
+        geom_line(size = 1) +
+        scale_color_manual(values = c(Isosceles = "black",
+                                      IsoQuant = "gold",
+                                      FLAMES = "tomato",
+                                      Sicelore = "royalblue")) +
+        scale_linetype_manual(values = c(Promethion = "solid",
+                                         MinION = "dotted")) +
+        scale_x_continuous(
+            trans = "log10",
+            n.breaks = 7
+        ) +
+        lims(y = c(0, 2)) +
+        labs(
+           x = "Top N transcripts",
+           y = "Mean rel. diff.",
+           col = "Tool",
+           linetype = "Platform"
+        ) +
+        theme_bw() +
+        theme(aspect.ratio = 1,
+              legend.title = element_blank())
+}
+```
+
+Bulk vs pseudobulk mean relative difference plot:
+```{r, message = FALSE, warning = FALSE}
+ggplot(results_df,
+       mapping = aes(x = k_value,
+                     y = mean_rel_diff,
+                     col = tool,
+                     linetype = platform)) +
+    geom_line(size = 1) +
+    scale_color_manual(values = c(Isosceles = "black",
+                                  IsoQuant = "gold",
+                                  FLAMES = "tomato",
+                                  Sicelore = "royalblue")) +
+    scale_linetype_manual(values = c(Promethion = "solid",
+                                     MinION = "dotted")) +
+    scale_x_continuous(
+        trans = "log2",
+        breaks = c(1, 4, 16, 64, 256, 800)
+    ) +
+    lims(y = c(0, 2)) +
+    labs(
+        x = "Top k cells",
+        y = "Mean rel. diff.",
+        col = "Tool",
+        linetype = "Platform"
+    ) +
+    theme_bw() +
+    theme(aspect.ratio = 1,
+          legend.title = element_blank())
+```
+
+Bulk vs pseudobulk mean relative difference plot for top N transcripts (top 64 cells):
+```{r, message = FALSE, warning = FALSE}
+plot_mean_rel_diff_top_n(64)
+```
+
+Bulk vs pseudobulk mean relative difference plot for top N transcripts (top 800 cells):
+```{r, message = FALSE, warning = FALSE}
+plot_mean_rel_diff_top_n(800)
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

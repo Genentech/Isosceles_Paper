@@ -1,0 +1,6 @@
+BootStrap: docker
+From: bioconductor/bioconductor_docker:RELEASE_3_15
+
+%post
+    Rscript -e 'BiocManager::install(c("scran", "scater", "uwot", "dittoSeq", "ggbio", "BiocStyle", "fastmatch", "RcppArmadillo", "tidyverse"), update = TRUE, ask = FALSE)'
+    Rscript -e 'devtools::install_github("timbitz/Isosceles", ref = "0.0.1", dependencies = TRUE, upgrade = TRUE)'

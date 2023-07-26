@@ -1,0 +1,17 @@
+BootStrap: docker
+From: debian:stable
+
+%files
+    isosceles_jupyter.yml /opt
+%environment
+    . /opt/conda/etc/profile.d/conda.sh
+    conda activate isosceles_jupyter
+%post
+    apt-get -y update
+    apt-get -y install wget
+    wget -O /opt/Miniconda3-latest-Linux-x86_64.sh https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    sh /opt/Miniconda3-latest-Linux-x86_64.sh -b -p /opt/conda
+    rm -f /opt/Miniconda3-latest-Linux-x86_64.sh
+    . /opt/conda/bin/activate
+    conda env create -f /opt/isosceles_jupyter.yml
+    conda deactivate

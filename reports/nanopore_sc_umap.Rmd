@@ -1,0 +1,90 @@
+---
+title: "Nanopore scRNA-Seq UMAP plots"
+output:
+  html_document:
+    highlight: pygments
+    df_print: paged
+    toc: true
+    toc_depth: 2
+---
+
+# Preparing the data
+
+Load the required packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(glue)
+library(Matrix)
+library(scater)
+library(scran)
+library(dittoSeq)
+```
+
+Global parameters:
+```{r}
+cell_min_genes <- 500
+top_hvgs_num <- 4000
+seed <- 42
+```
+
+# Isosceles scRNA-Seq data analysis (transcript-level)
+
+Process scRNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+sce <- readRDS(file.path(
+    "..", "nanopore_sc_analysis", "report_data", "isosceles_se_transcript.rds"
+))
+sce <- sce[, sce$label %in% c("0", "1", "2")]
+sce <- as(sce, "SingleCellExperiment")
+sce <- sce[, colSums(assay(sce, "relative_expression")) >= cell_min_genes]
+sce <- computeLibraryFactors(sce)
+sce <- logNormCounts(sce)
+dec <- modelGeneVar(sce)
+top_hvgs <- getTopHVGs(dec, n = top_hvgs_num)
+set.seed(seed)
+sce <- denoisePCA(sce, technical = dec, subset.row = top_hvgs)
+set.seed(seed)
+sce <- runUMAP(sce, dimred = "PCA")
+```
+
+UMAP plot:
+```{r, message = FALSE, warning = FALSE}
+dittoDimPlot(sce, "label", reduction.use = "UMAP",
+             size = 0.5, main = "",
+             do.label = TRUE, labels.highlight = TRUE,
+             legend.show = FALSE)
+```
+
+# Isosceles scRNA-Seq data analysis (gene-level)
+
+Process scRNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+sce <- readRDS(file.path(
+    "..", "nanopore_sc_analysis", "report_data", "isosceles_se_gene.rds"
+))
+sce <- sce[, sce$label %in% c("0", "1", "2")]
+sce <- as(sce, "SingleCellExperiment")
+sce <- sce[, colSums(assay(sce, "relative_expression")) >= cell_min_genes]
+sce <- computeLibraryFactors(sce)
+sce <- logNormCounts(sce)
+dec <- modelGeneVar(sce)
+top_hvgs <- getTopHVGs(dec, n = top_hvgs_num)
+set.seed(seed)
+sce <- denoisePCA(sce, technical = dec, subset.row = top_hvgs)
+set.seed(seed)
+sce <- runUMAP(sce, dimred = "PCA")
+```
+
+UMAP plot:
+```{r, message = FALSE, warning = FALSE}
+dittoDimPlot(sce, "label", reduction.use = "UMAP",
+             size = 0.5, main = "",
+             do.label = TRUE, labels.highlight = TRUE,
+             legend.show = FALSE)
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
