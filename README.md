@@ -45,7 +45,7 @@ cd ..
 
 ## Section #2. (Optional) Re-generating Quantifications from Raw Reads
 
-If desired, you can download all of the raw input reads and re-run all the programs to re-generate quantifications used in Part #1 `reports`.  This is quite a bit more involved, and requires significant computation and memory resources.  While Isosceles is fairly efficient and can be run on most systems, not all software benchmarked here is, and so we ran most steps on our cluster with 20 CPUs and 200 GB of RAM.  While we provide environments for each software suite, we also provide the disclaimer that although this runs cleanly on our system, some programs may take some troubleshooting on other systems to get working.
+We also provide the scripts to re-run all the programs to re-generate quantifications used in Part #1 `reports` (provided you download the input data).  This is quite a bit more involved, and requires significant computation and memory resources.  While Isosceles is fairly efficient and can be run on most systems, not all software benchmarked here is, and so we ran most steps on our cluster with 20 CPUs and 200 GB of RAM.  While we provide environments for each software suite, we also provide the disclaimer that although this runs cleanly on our system, some programs may take some troubleshooting on other systems to get working.
 
 First prepare the software and environments using:
 ```bash
