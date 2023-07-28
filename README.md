@@ -1,10 +1,10 @@
 # Isosceles paper
 
-Isosceles paper scripts and data analysis repository to reproduce data/analysis/plots from the paper. This repo has two parts:
+This repository contains scripts and data analysis for the Isosceles paper, enabling the replication of data, analyses, and plots featured in the paper. The repository is divided into two main sections:
 
 ## Section #1. Analysis of Quantifications
 
-Here, you can download singularity images and the output of each benchmark program.  With these you can run our scripts in `reports` to reproduce the figures/plots in the paper. Each directory has a script to first download the results from running all programs on the that benchmark, which can be run using the commands described below. The exact commands used to generate the data are described in Section #2, but you can find a brief summary in the [Benchmark_commands.md](Benchmark_commands.md) document.
+In this section, you can access singularity images and benchmark program outputs required to run our scripts in the 'reports' folder, reproducing the figures and plots presented in the paper. Each directory includes a script to download the results from running all programs on the corresponding benchmark. You can execute these scripts using the provided commands below. For more details on the exact commands used to generate the data, please refer to Section #2 or check the brief summary in the [Benchmark_commands.md](Benchmark_commands.md) document.
 
 Download and prepare the Singularity images:
 ```bash
@@ -45,7 +45,7 @@ cd ..
 
 ## Section #2. (Optional) Re-generating Quantifications from Raw Reads
 
-We also provide the scripts to re-run all the programs to re-generate quantifications used in Part #1 `reports` (provided you download the input data).  This is quite a bit more involved, and requires significant computation and memory resources.  While Isosceles is fairly efficient and can be run on most systems, not all software benchmarked here is, and so we ran most steps on our cluster with 20 CPUs and 200 GB of RAM.  While we provide environments for each software suite, we also provide the disclaimer that although this runs cleanly on our system, some programs may take some troubleshooting on other systems to get working.
+We also provide the scripts to re-run all the programs to re-generate quantifications used in Part #1 `reports` (provided you download the input data).  This is more involved, and requires significant computation and memory resources.  While Isosceles is fairly efficient and can be run on most systems, not all software benchmarked here is, and so most steps were run on a cluster with 20 CPUs and 200 GB of RAM.  While we provide environments for each software suite, we note that although this runs cleanly on our system, some programs may take some troubleshooting on other systems to get working.
 
 First prepare the software and environments using:
 ```bash
