@@ -27,7 +27,6 @@ saveRDS(bam_parsed, file.path(result_dir, "bam_parsed",
 
 # Preparing transcript set
 dir.create(file.path(result_dir, "transcript_data"), recursive = TRUE)
-is_technical <- FALSE
 min_intron_length <- 30
 known_intron_motifs <- c("GT-AG")
 rescue_annotated_introns <- FALSE
@@ -42,7 +41,7 @@ bam_parsed <- readRDS(file.path(result_dir, "bam_parsed",
                                 glue("{sample_id}.rds")))
 transcript_data <- prepare_transcripts(
     gtf_file = gtf_file, genome_fasta_file = genome_fasta_file,
-    bam_parsed = bam_parsed, is_technical = is_technical,
+    bam_parsed = bam_parsed,
     min_intron_length = min_intron_length,
     known_intron_motifs = known_intron_motifs,
     rescue_annotated_introns = rescue_annotated_introns,
@@ -62,7 +61,7 @@ for (perc_down in perc_downs) {
                                     glue("{sample_id}.rds")))
     transcript_data <- prepare_transcripts(
         gtf_file = gtf_file, genome_fasta_file = genome_fasta_file,
-        bam_parsed = bam_parsed, is_technical = is_technical,
+        bam_parsed = bam_parsed,
         min_intron_length = min_intron_length,
         known_intron_motifs = known_intron_motifs,
         rescue_annotated_introns = rescue_annotated_introns,
@@ -83,7 +82,7 @@ for (perc_down in perc_downs) {
                                     glue("{sample_id}.rds")))
     transcript_data <- prepare_transcripts(
         gtf_file = gtf_file, genome_fasta_file = genome_fasta_file,
-        bam_parsed = bam_parsed, is_technical = TRUE,
+        bam_parsed = bam_parsed,
         min_intron_length = min_intron_length,
         known_intron_motifs = known_intron_motifs,
         rescue_annotated_introns = rescue_annotated_introns,
@@ -105,7 +104,7 @@ for (perc_down in perc_downs) {
                                     glue("{sample_id}.rds")))
     transcript_data <- prepare_transcripts(
         gtf_file = gtf_file, genome_fasta_file = genome_fasta_file,
-        bam_parsed = bam_parsed, is_technical = TRUE,
+        bam_parsed = bam_parsed,
         min_intron_length = min_intron_length,
         known_intron_motifs = known_intron_motifs,
         rescue_annotated_introns = rescue_annotated_introns,

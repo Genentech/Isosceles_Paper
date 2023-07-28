@@ -24,7 +24,6 @@ result_dir <- "isosceles_results"
 dir.create(result_dir, recursive = TRUE)
 
 # Preparing transcript set
-is_technical <- FALSE
 min_intron_length <- 30
 known_intron_motifs <- c("GT-AG")
 rescue_annotated_introns <- FALSE
@@ -33,7 +32,7 @@ bin_size <- 50
 known_intron_granges <- rtracklayer::import(intron_bed_file)
 transcript_data <- prepare_transcripts(
     gtf_file = gtf_file, genome_fasta_file = genome_fasta_file,
-    bam_parsed = NULL, is_technical = is_technical,
+    bam_parsed = NULL,
     min_intron_length = min_intron_length,
     known_intron_motifs = known_intron_motifs,
     rescue_annotated_introns = rescue_annotated_introns,
