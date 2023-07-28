@@ -4,7 +4,7 @@ Isosceles paper scripts and data analysis repository to reproduce data/analysis/
 
 ## Section #1. Analysis of Quantifications
 
-Here, you can download a singularity image and output from each benchmark program and use our scripts in `reports` to reproduce the figures/plots in the paper. Each directory has a script to first download the results from running all programs on the that benchmark, which can be run using the commands described below. The exact commands used to generate the data are described in Section #2, but you can find a brief summary in the [Benchmark_commands.md](Benchmark_commands.md) document.
+Here, you can download singularity images and the output of each benchmark program.  With these you can run our scripts in `reports` to reproduce the figures/plots in the paper. Each directory has a script to first download the results from running all programs on the that benchmark, which can be run using the commands described below. The exact commands used to generate the data are described in Section #2, but you can find a brief summary in the [Benchmark_commands.md](Benchmark_commands.md) document.
 
 Download and prepare the Singularity images:
 ```bash
