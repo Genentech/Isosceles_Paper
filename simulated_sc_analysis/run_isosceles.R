@@ -47,7 +47,7 @@ is_single_cell <- TRUE
 barcode_tag <- "BC"
 chunk_size <- 1000000
 transcript_data <- readRDS(file.path(result_dir, "transcript_data.rds"))
-se_tcc <- prepare_tcc_se(
+se_tcc <- bam_to_tcc(
     bam_files = bam_file, transcript_data = transcript_data,
     run_mode = run_mode,
     min_read_count = min_read_count,
@@ -64,7 +64,7 @@ em.maxiter <- 250
 em.conv <- 0.01
 use_length_normalization <- FALSE
 se_tcc <- readRDS(file.path(result_dir, "se_tcc.rds"))
-se_transcript <- prepare_transcript_se(
+se_transcript <- tcc_to_transcript(
     se_tcc = se_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
     use_length_normalization = use_length_normalization, ncpu = ncpu
 )
@@ -76,10 +76,10 @@ em.conv <- 0.01
 use_length_normalization <- FALSE
 se_tcc <- readRDS(file.path(result_dir, "se_tcc.rds"))
 cell_labels <- rep("simulated", ncol(se_tcc))
-se_pseudobulk_tcc <- prepare_pseudobulk_se(se_tcc, cell_labels)
+se_pseudobulk_tcc <- pseudobulk_tcc(se_tcc, cell_labels)
 saveRDS(se_pseudobulk_tcc, file.path(result_dir, "se_pseudobulk_tcc.rds"))
 se_pseudobulk_tcc <- readRDS(file.path(result_dir, "se_pseudobulk_tcc.rds"))
-se_pseudobulk_transcript <- prepare_transcript_se(
+se_pseudobulk_transcript <- tcc_to_transcript(
     se_tcc = se_pseudobulk_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
     use_length_normalization = use_length_normalization, ncpu = ncpu
 )

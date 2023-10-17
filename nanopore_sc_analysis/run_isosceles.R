@@ -50,7 +50,7 @@ is_single_cell <- TRUE
 barcode_tag <- "BC"
 chunk_size <- 1000000
 transcript_data <- readRDS(file.path(result_dir, "transcript_data.rds"))
-se_tcc <- prepare_tcc_se(
+se_tcc <- bam_to_tcc(
     bam_files = bam_file, transcript_data = transcript_data,
     run_mode = run_mode,
     min_read_count = min_read_count,
@@ -64,7 +64,7 @@ saveRDS(se_tcc, file.path(result_dir, "se_tcc.rds"))
 
 # Preparing the gene SE object
 se_tcc <- readRDS(file.path(result_dir, "se_tcc.rds"))
-se_gene <- prepare_gene_se(se_tcc = se_tcc)
+se_gene <- tcc_to_gene(se_tcc = se_tcc)
 saveRDS(se_gene, file.path(result_dir, "se_gene.rds"))
 
 # Preparing the transcript SE object
@@ -72,7 +72,7 @@ em.maxiter <- 250
 em.conv <- 0.01
 use_length_normalization <- FALSE
 se_tcc <- readRDS(file.path(result_dir, "se_tcc.rds"))
-se_transcript <- prepare_transcript_se(
+se_transcript <- tcc_to_transcript(
     se_tcc = se_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
     use_length_normalization = use_length_normalization, ncpu = ncpu
 )
@@ -100,12 +100,12 @@ saveRDS(se_transcript, file.path(result_dir, "se_transcript.rds"))
 # Preparing the pseudobulk TCC SE object
 se_tcc <- readRDS(file.path(result_dir, "se_tcc.rds"))
 cell_labels <- se_tcc$label
-se_pseudobulk_tcc <- prepare_pseudobulk_se(se_tcc, cell_labels)
+se_pseudobulk_tcc <- pseudobulk_tcc(se_tcc, cell_labels)
 saveRDS(se_pseudobulk_tcc, file.path(result_dir, "se_pseudobulk_tcc.rds"))
 
 # Preparing the pseudobulk gene SE object
 se_pseudobulk_tcc <- readRDS(file.path(result_dir, "se_pseudobulk_tcc.rds"))
-se_pseudobulk_gene <- prepare_gene_se(se_tcc = se_pseudobulk_tcc)
+se_pseudobulk_gene <- tcc_to_gene(se_tcc = se_pseudobulk_tcc)
 saveRDS(se_pseudobulk_gene, file.path(result_dir, "se_pseudobulk_gene.rds"))
 
 # Preparing the pseudobulk transcript SE object
@@ -113,7 +113,7 @@ em.maxiter <- 250
 em.conv <- 0.01
 use_length_normalization <- FALSE
 se_pseudobulk_tcc <- readRDS(file.path(result_dir, "se_pseudobulk_tcc.rds"))
-se_pseudobulk_transcript <- prepare_transcript_se(
+se_pseudobulk_transcript <- tcc_to_transcript(
     se_tcc = se_pseudobulk_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
     use_length_normalization = use_length_normalization, ncpu = ncpu
 )
@@ -130,7 +130,7 @@ saveRDS(se_igrov_tcc, file.path(result_dir, "se_igrov_tcc.rds"))
 
 # Preparing the IGROV-1 gene SE object
 se_igrov_tcc <- readRDS(file.path(result_dir, "se_igrov_tcc.rds"))
-se_igrov_gene <- prepare_gene_se(se_tcc = se_igrov_tcc)
+se_igrov_gene <- tcc_to_gene(se_tcc = se_igrov_tcc)
 saveRDS(se_igrov_gene, file.path(result_dir, "se_igrov_gene.rds"))
 
 # Preparing the IGROV-1 transcript SE object
@@ -138,7 +138,7 @@ se_igrov_tcc <- readRDS(file.path(result_dir, "se_igrov_tcc.rds"))
 em.maxiter <- 250
 em.conv <- 0.01
 use_length_normalization <- FALSE
-se_igrov_transcript <- prepare_transcript_se(
+se_igrov_transcript <- tcc_to_transcript(
     se_tcc = se_igrov_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
     use_length_normalization = use_length_normalization, ncpu = ncpu
 )
@@ -147,12 +147,12 @@ saveRDS(se_igrov_transcript, file.path(result_dir, "se_igrov_transcript.rds"))
 # Preparing the IGROV-1 pseudobulk TCC SE object
 se_igrov_tcc <- readRDS(file.path(result_dir, "se_igrov_tcc.rds"))
 cell_labels <- rep(paste0(sample_id, "_IGROV"), ncol(se_igrov_tcc))
-se_igrov_pseudobulk_tcc <- prepare_pseudobulk_se(se_igrov_tcc, cell_labels)
+se_igrov_pseudobulk_tcc <- pseudobulk_tcc(se_igrov_tcc, cell_labels)
 saveRDS(se_igrov_pseudobulk_tcc, file.path(result_dir, "se_igrov_pseudobulk_tcc.rds"))
 
 # Preparing the IGROV-1 pseudobulk gene SE object
 se_igrov_pseudobulk_tcc <- readRDS(file.path(result_dir, "se_igrov_pseudobulk_tcc.rds"))
-se_igrov_pseudobulk_gene <- prepare_gene_se(se_tcc = se_igrov_pseudobulk_tcc)
+se_igrov_pseudobulk_gene <- tcc_to_gene(se_tcc = se_igrov_pseudobulk_tcc)
 saveRDS(se_igrov_pseudobulk_gene, file.path(result_dir, "se_igrov_pseudobulk_gene.rds"))
 
 # Preparing the IGROV-1 pseudobulk transcript SE object
@@ -160,7 +160,7 @@ se_igrov_pseudobulk_tcc <- readRDS(file.path(result_dir, "se_igrov_pseudobulk_tc
 em.maxiter <- 250
 em.conv <- 0.01
 use_length_normalization <- FALSE
-se_igrov_pseudobulk_transcript <- prepare_transcript_se(
+se_igrov_pseudobulk_transcript <- tcc_to_transcript(
     se_tcc = se_igrov_pseudobulk_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
     use_length_normalization = use_length_normalization, ncpu = ncpu
 )
@@ -182,12 +182,12 @@ saveRDS(se_igrov_k_tcc, file.path(result_dir, "se_igrov_k_tcc.rds"))
 # Preparing the IGROV-1 pseudobulk TCC SE object (k cells subsets)
 se_igrov_k_tcc <- readRDS(file.path(result_dir, "se_igrov_k_tcc.rds"))
 cell_labels <- rep(k_values, k_values)
-se_igrov_pseudobulk_k_tcc <- prepare_pseudobulk_se(se_igrov_k_tcc, cell_labels)
+se_igrov_pseudobulk_k_tcc <- pseudobulk_tcc(se_igrov_k_tcc, cell_labels)
 saveRDS(se_igrov_pseudobulk_k_tcc, file.path(result_dir, "se_igrov_pseudobulk_k_tcc.rds"))
 
 # Preparing the IGROV-1 pseudobulk gene SE object (k cells subsets)
 se_igrov_pseudobulk_k_tcc <- readRDS(file.path(result_dir, "se_igrov_pseudobulk_k_tcc.rds"))
-se_igrov_pseudobulk_k_gene <- prepare_gene_se(se_tcc = se_igrov_pseudobulk_k_tcc)
+se_igrov_pseudobulk_k_gene <- tcc_to_gene(se_tcc = se_igrov_pseudobulk_k_tcc)
 saveRDS(se_igrov_pseudobulk_k_gene, file.path(result_dir, "se_igrov_pseudobulk_k_gene.rds"))
 
 # Preparing the IGROV-1 pseudobulk transcript SE object (k cells subsets)
@@ -195,7 +195,7 @@ se_igrov_pseudobulk_k_tcc <- readRDS(file.path(result_dir, "se_igrov_pseudobulk_
 em.maxiter <- 250
 em.conv <- 0.01
 use_length_normalization <- FALSE
-se_igrov_pseudobulk_k_transcript <- prepare_transcript_se(
+se_igrov_pseudobulk_k_transcript <- tcc_to_transcript(
     se_tcc = se_igrov_pseudobulk_k_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
     use_length_normalization = use_length_normalization, ncpu = ncpu
 )

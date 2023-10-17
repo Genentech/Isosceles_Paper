@@ -21,7 +21,7 @@ dir.create(result_dir, recursive = TRUE)
 
 # BAM parsing
 dir.create(file.path(result_dir, "bam_parsed"), recursive = TRUE)
-bam_parsed <- extract_read_structures(bam_file)
+bam_parsed <- bam_to_read_structures(bam_file)
 saveRDS(bam_parsed, file.path(result_dir, "bam_parsed",
                               glue("{sample_id}.rds")))
 
@@ -127,7 +127,7 @@ chunk_size <- 1000000
 run_mode <- "strict"
 transcript_data <- readRDS(file.path(result_dir, "transcript_data",
                                      glue("{sample_id}_quant.rds")))
-se_tcc <- prepare_tcc_se(
+se_tcc <- bam_to_tcc(
     bam_files = bam_file, transcript_data = transcript_data,
     run_mode = run_mode,
     min_read_count = min_read_count,
@@ -142,7 +142,7 @@ for (perc_down in perc_downs) {
     run_mode <- "de_novo_loose"
     transcript_data <- readRDS(file.path(result_dir, "transcript_data",
                                          glue("{sample_id}_denovo_{perc_down}.rds")))
-    se_tcc <- prepare_tcc_se(
+    se_tcc <- bam_to_tcc(
         bam_files = bam_file, transcript_data = transcript_data,
         run_mode = run_mode,
         min_read_count = min_read_count,
@@ -158,7 +158,7 @@ for (perc_down in perc_downs) {
     run_mode <- "de_novo_loose"
     transcript_data <- readRDS(file.path(result_dir, "transcript_data",
                                          glue("{sample_id}_stringtie_{perc_down}.rds")))
-    se_tcc <- prepare_tcc_se(
+    se_tcc <- bam_to_tcc(
         bam_files = bam_file, transcript_data = transcript_data,
         run_mode = run_mode,
         min_read_count = min_read_count,
@@ -174,7 +174,7 @@ for (perc_down in perc_downs) {
     run_mode <- "de_novo_loose"
     transcript_data <- readRDS(file.path(result_dir, "transcript_data",
                                          glue("{sample_id}_isoquant_{perc_down}.rds")))
-    se_tcc <- prepare_tcc_se(
+    se_tcc <- bam_to_tcc(
         bam_files = bam_file, transcript_data = transcript_data,
         run_mode = run_mode,
         min_read_count = min_read_count,
@@ -192,7 +192,7 @@ use_length_normalization <- TRUE
 
 ## Transcript quantification
 se_tcc <- readRDS(file.path(result_dir, glue("{sample_id}_quant_se_tcc.rds")))
-se_transcript <- prepare_transcript_se(
+se_transcript <- tcc_to_transcript(
     se_tcc = se_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
     use_length_normalization = use_length_normalization, ncpu = ncpu
 )
@@ -201,7 +201,7 @@ saveRDS(se_transcript, file.path(result_dir, glue("{sample_id}_quant_se_transcri
 ## Transcript quantification with de novo detection
 for (perc_down in perc_downs) {
     se_tcc <- readRDS(file.path(result_dir, glue("{sample_id}_denovo_{perc_down}_se_tcc.rds")))
-    se_transcript <- prepare_transcript_se(
+    se_transcript <- tcc_to_transcript(
         se_tcc = se_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
         use_length_normalization = use_length_normalization, ncpu = ncpu
     )
@@ -211,7 +211,7 @@ for (perc_down in perc_downs) {
 ## Transcript quantification with de novo detection using StringTie
 for (perc_down in perc_downs) {
     se_tcc <- readRDS(file.path(result_dir, glue("{sample_id}_stringtie_{perc_down}_se_tcc.rds")))
-    se_transcript <- prepare_transcript_se(
+    se_transcript <- tcc_to_transcript(
         se_tcc = se_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
         use_length_normalization = use_length_normalization, ncpu = ncpu
     )
@@ -221,7 +221,7 @@ for (perc_down in perc_downs) {
 ## Transcript quantification with de novo detection using IsoQuant
 for (perc_down in perc_downs) {
     se_tcc <- readRDS(file.path(result_dir, glue("{sample_id}_isoquant_{perc_down}_se_tcc.rds")))
-    se_transcript <- prepare_transcript_se(
+    se_transcript <- tcc_to_transcript(
         se_tcc = se_tcc, em.maxiter = em.maxiter, em.conv = em.conv,
         use_length_normalization = use_length_normalization, ncpu = ncpu
     )
