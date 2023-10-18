@@ -4,6 +4,7 @@
 
   * **download_data.sh** - the script for downloading input data for the analysis
   * **00_run_isosceles.R** - the R script for processing input data using Isosceles (transcript detection and expression quantification)
+  * **01_scrnaseq_analysis.R** - the R script for basic scRNA-Seq analysis (dimensionality reduction, clustering etc.)
 
 ## Input files to download
 
