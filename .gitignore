@@ -65,7 +65,7 @@ software/bin/*
 software/git/*
 !software/git/.gitkeep
 
-# Input data directory
+# Input data files
 input_data/bam_sim/*
 !input_data/bam_sim/.gitkeep
 input_data/cellranger/*
@@ -74,6 +74,7 @@ input_data/fastq_ont/*
 !input_data/fastq_ont/.gitkeep
 input_data/fastq_sim/*
 !input_data/fastq_sim/.gitkeep
+mouse_E18_analysis/data
 
 # Analysis results
 simulated_bulk_analysis/bam
