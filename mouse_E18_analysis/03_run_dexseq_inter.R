@@ -5,6 +5,11 @@ suppressMessages({
     library(glue)
     library(Isosceles)
     library(DEXSeq)
+    library(RColorBrewer)
+    library(dittoSeq)
+    library(Nebulosa)
+    require(patchwork)
+    library(pdftools)
 })
 
 # Set the number of CPUs/threads for the analysis
@@ -21,6 +26,8 @@ dir.create(result_dir, recursive = TRUE)
 # Read the analysis results from previous steps
 se_tcc <- readRDS("00_run_isosceles/se_tcc.rds")
 se_gene <- readRDS("00_run_isosceles/se_gene.rds")
+sce <- readRDS("01_scrnaseq_analysis/sce.rds")
+sce_psi <- readRDS("01_scrnaseq_analysis/sce_psi.rds")
 pseudotime_matrix <- readRDS("01_scrnaseq_analysis/pseudotime_matrix.rds")
 psi_events_list <- readRDS("01_scrnaseq_analysis/psi_events_list.rds")
 
@@ -313,6 +320,65 @@ perm_psi_counts_list <- lapply(filtered_gene_ids, function(gene_id) {
 })
 names(perm_psi_counts_list) <- filtered_gene_ids
 saveRDS(perm_psi_counts_list, file.path(result_dir, "perm_psi_counts_list.rds"))
+
+################################################################################
+
+# Create gene & PSI expression UMAP plots for significant results
+
+plot_umap_expression <- function(psi_event, psi_label, pal = NULL) {
+    gene_id <- strsplit(psi_event, ":")[[1]][1]
+    p1 <- plot_density(sce_psi, psi_event,
+                       slot = "psi", size = 1.5) +
+        labs(title = "PSI values density") +
+        theme(legend.position = "right",
+              plot.title = element_text(size = 13))
+    p2 <- plot_density(sce, gene_id,
+                       size = 1.5) +
+        labs(title = "Gene expression density") +
+        theme(legend.position = "right",
+              plot.title = element_text(size = 13))
+    if (!is.null(pal)) {
+        p1 <- p1 +
+            scale_color_gradientn(
+                colours = brewer.pal(n = 7, name = pal)
+            )
+        p2 <- p2 +
+            scale_color_gradientn(
+                colours = brewer.pal(n = 7, name = pal)
+            )
+    }
+    p3 <- dittoDimPlot(sce_psi,
+                       psi_event,
+                       reduction.use = "UMAP",
+                       assay = "psi",
+                       size = 1.5, main = "PSI values",
+                       order = "increasing")
+    p4 <- dittoDimPlot(sce, gene_id,
+                       reduction.use = "UMAP",
+                       size = 1.5, main = "Gene expression",
+                       order = "increasing")
+
+    patchwork <- (p1 + p2) / (p3 + p4)
+    patchwork + plot_annotation(title = psi_label, subtitle = psi_event)
+}
+
+# Expression UMAP plots for all identified significant PSI events
+filtered_results_df <- filter(dexseq_results_df, fdr <= 0.05, max_abs_logFC >= 1)
+psi_label_to_event <- setNames(
+    filtered_results_df$psi_event, filtered_results_df$psi_label
+)
+psi_labels <- sort(unique(filtered_results_df$psi_label))
+dir.create("results/temp", recursive = TRUE)
+pdf_files <- sapply(seq_along(psi_labels), function(i) {
+    psi_label <- psi_labels[i]
+    psi_event <- unname(psi_label_to_event[psi_label])
+    umap_plot <- plot_umap_expression(psi_event, psi_label)
+    pdf_file <- glue("results/temp/{i}.pdf")
+    ggsave(pdf_file, umap_plot, height = 5, width = 8)
+    return(pdf_file)
+})
+pdf_combine(pdf_files, output = glue("results/umap_psi_inter.pdf"))
+unlink("results/temp", recursive = TRUE)
 
 ################################################################################
 

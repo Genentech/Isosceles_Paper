@@ -11,6 +11,7 @@ suppressMessages({
     library(slingshot)
     library(BiocParallel)
     library(BiocNeighbors)
+    library(pheatmap)
 })
 
 # Set the number of CPUs/threads for the analysis
@@ -132,6 +133,37 @@ saveRDS(se_pseudobulk_transcript, file.path(result_dir, "se_pseudobulk_transcrip
 
 se_pseudobulk_psi <- transcript_to_psi(se_pseudobulk_transcript, ncpu = ncpu)
 saveRDS(se_pseudobulk_psi, file.path(result_dir, "se_pseudobulk_psi.rds"))
+
+################################################################################
+
+# Assigning clusters to cell types using marker gene set scores
+
+marker_sets <- list(
+    Progenitors = c("Neurog2", "Eomes"),
+    CR_cells = c("Snhg11", "Lhx5", "Reln"),
+    GABA = c("Gad2", "Gad1", "Dlx2"),
+    Mat_GABA = c("Maf", "Mafb", "Arx"),
+    Glut = c("Neurod6", "Neurod2"),
+    Mat_Glut = c("Camk2b", "Opcml", "Crym"),
+    Rad_glia = c("Fabp7", "Vim", "Dbi"),
+    Cyc_rad_glia = c("Cenpf", "Top2a", "Mki67")
+
+)
+
+se_pseudobulk_gene_marker <- se_pseudobulk_gene
+rownames(se_pseudobulk_gene_marker) <- make.unique(rowData(se_pseudobulk_gene_marker)$gene_name, sep = "@")
+marker_scores <- sumCountsAcrossFeatures(se_pseudobulk_gene_marker,
+                                         marker_sets,
+                                         exprs_values = "tpm",
+                                         average = TRUE)
+
+heatmap_plot <- pheatmap(
+    log2(marker_scores + 1),
+    cluster_rows = TRUE, cluster_cols = TRUE,
+    scale = "row"
+)
+ggsave("results/heatmap_cluster_cell_type_scores.pdf", heatmap_plot,
+       height = 5, width = 7)
 
 ################################################################################
 
