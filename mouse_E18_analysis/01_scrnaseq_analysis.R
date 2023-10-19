@@ -203,5 +203,28 @@ saveRDS(pseudotime_matrix, file.path(result_dir, "pseudotime_matrix.rds"))
 
 ################################################################################
 
+# Prepare PSI regions of interest for each trajectory
+psi_events_list <- lapply(colnames(pseudotime_matrix), function(traj_name) {
+    pseudotime <- pseudotime_matrix[, traj_name]
+    pseudotime <- pseudotime[!is.na(pseudotime)]
+    se_psi_traj <- se_psi[, names(pseudotime)]
+    psi_assay <- assay(se_psi_traj, "psi")
+    psi_assay <- psi_assay[rowData(se_psi_traj)$gene_id %in% top_hvgs,]
+    feature_selector <- (!grepl(":TSS", rownames(psi_assay))) &
+        (!grepl(":TES", rownames(psi_assay)))
+    psi_assay <- psi_assay[feature_selector,]
+    psi_selector <- (apply(psi_assay, 1, mean) > 0.025) &
+        (apply(psi_assay, 1, mean) < 0.975) &
+        (apply(psi_assay, 1, function(x) { sum((x > 0) & (x < 0.999) & (x != 0.5)) }) > 30) &
+        (apply(psi_assay, 1, function(x) { sum(x > 0.1) }) > 30)
+    psi_assay <- psi_assay[psi_selector,]
+    psi_events <- rownames(psi_assay)
+    return(psi_events)
+})
+names(psi_events_list) <- colnames(pseudotime_matrix)
+saveRDS(psi_events_list, file.path(result_dir, "psi_events_list.rds"))
+
+################################################################################
+
 # Print session information
 sessionInfo()
