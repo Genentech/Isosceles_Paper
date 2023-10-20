@@ -377,7 +377,115 @@ pdf_files <- sapply(seq_along(psi_labels), function(i) {
     ggsave(pdf_file, umap_plot, height = 5, width = 8)
     return(pdf_file)
 })
-pdf_combine(pdf_files, output = glue("results/umap_psi_inter.pdf"))
+pdf_combine(pdf_files, output = "results/umap_psi_inter.pdf")
+unlink("results/temp", recursive = TRUE)
+
+################################################################################
+
+# Create PSI counts trajectory plots for significant results
+
+trajectory_names <- c(
+    glut_1 = "Glutamatergic trajectory 1",
+    glut_2 = "Glutamatergic trajectory 2",
+    gaba = "GABAergic trajectory",
+    rad_glia = "Radial glia",
+    cyc_rad_glia = "Cycling radial glia",
+    cr = "Cajal Retzius cells"
+)
+
+plot_psi_single_traj <- function(psi_event, psi_label, traj_name, plot_title = TRUE) {
+    gene_id <- strsplit(psi_event, ":")[[1]][1]
+    pseudotime <- window_pseudotime_list[[traj_name]]
+    psi_df <- data.frame(
+        pseudotime = pseudotime,
+        psi_counts = plot_psi_counts_list[[traj_name]][psi_event,]
+    )
+    psi_perm_matrix <- sapply(seq(n_perm), function(i) {
+        perm_matrix <- perm_psi_counts_list[[gene_id]][[i]][[traj_name]]
+        if (psi_event %in% rownames(perm_matrix)) {
+            return(perm_matrix[psi_event,])
+        } else {
+            return(setNames(rep(0, ncol(perm_matrix)), colnames(perm_matrix)))
+        }
+    })
+    psi_perm_df <- data.frame(
+        pseudotime = rep(pseudotime, ncol(psi_perm_matrix)),
+        psi_counts = as.vector(psi_perm_matrix),
+        permutation = rep(seq(ncol(psi_perm_matrix)), each = length(pseudotime))
+    )
+    ggplot() +
+        geom_line(
+            data = psi_perm_df,
+            col = "grey", alpha = 0.5,
+            mapping = aes(x = pseudotime, y = psi_counts, group = permutation)
+        ) +
+        geom_line(
+            data = psi_df,
+            col = "red", size = 1,
+            mapping = aes(x = pseudotime, y = psi_counts)
+        ) +
+        labs(
+            title = ifelse(plot_title, psi_label, ""),
+            subtitle = ifelse(plot_title, psi_event, trajectory_names[traj_name]),
+            x = "Mean window pseudotime",
+            y = "PSI counts"
+        ) +
+        theme_bw()
+}
+
+plot_psi_all_traj <- function(psi_event, psi_label) {
+    p1 <- plot_psi_single_traj(psi_event, psi_label, "glut_1", plot_title = FALSE)
+    p2 <- plot_psi_single_traj(psi_event, psi_label, "glut_2", plot_title = FALSE)
+    p3 <- plot_psi_single_traj(psi_event, psi_label, "gaba", plot_title = FALSE)
+    p4 <- plot_psi_single_traj(psi_event, psi_label, "rad_glia", plot_title = FALSE)
+    p5 <- plot_psi_single_traj(psi_event, psi_label, "cyc_rad_glia", plot_title = FALSE)
+    p6 <- plot_psi_single_traj(psi_event, psi_label, "cr", plot_title = FALSE)
+    p1 + p4 + p2 + p5 + p3 + p6 +
+        plot_layout(nrow = 3, widths = c(2, 1)) +
+        plot_annotation(title = psi_label, subtitle = psi_event)
+}
+
+# PSI counts trajectory plots for selected PSI events of the Celf2 gene
+## Glutamatergic trajecotry 1
+p1 <- plot_psi_single_traj("ENSMUSG00000002107:chr2:6560659-6560670:-:A5",
+                           "Celf2:0c9e:A5", "glut_1")
+p2 <- plot_psi_single_traj("ENSMUSG00000002107:chr2:6553965-6553982:-:A3",
+                           "Celf2:fc81:A3", "glut_1")
+p3 <- plot_psi_single_traj("ENSMUSG00000002107:chr2:6546780-6547041:-:RI",
+                           "Celf2:823a:RI", "glut_1")
+traj_plot <- p1 / p2 / p3
+ggsave("results/trajectory_plot_inter_Celf2_Glut_1.pdf", traj_plot,
+       height = 8, width = 8)
+## All trajectories
+traj_plot <- plot_psi_all_traj("ENSMUSG00000002107:chr2:6560659-6560670:-:A5",
+                               "Celf2:0c9e:A5")
+ggsave("results/trajectory_plot_inter_Celf2_A5.pdf", traj_plot,
+       height = 8, width = 8)
+traj_plot <- plot_psi_all_traj("ENSMUSG00000002107:chr2:6553965-6553982:-:A3",
+                               "Celf2:fc81:A3")
+ggsave("results/trajectory_plot_inter_Celf2_A3.pdf", traj_plot,
+       height = 8, width = 8)
+traj_plot <- plot_psi_all_traj("ENSMUSG00000002107:chr2:6546780-6547041:-:RI",
+                               "Celf2:823a:RI")
+ggsave("results/trajectory_plot_inter_Celf2_RI.pdf", traj_plot,
+       height = 8, width = 8)
+
+# PSI counts trajectory plots for all identified significant PSI events
+filtered_results_df <- filter(dexseq_results_df, fdr <= 0.05, max_abs_logFC >= 1)
+psi_labels <- sort(unique(filtered_results_df$psi_label))
+psi_label_to_event <- setNames(
+    filtered_results_df$psi_event, filtered_results_df$psi_label
+)
+dir.create("results/temp", recursive = TRUE)
+pdf_files <- sapply(seq_along(psi_labels), function(i) {
+    psi_label <- psi_labels[i]
+    psi_event <- unname(psi_label_to_event[psi_label])
+    traj_plot <- plot_psi_all_traj(psi_event, psi_label)
+    pdf_file <- glue("results/temp/{i}.pdf")
+    ggsave(pdf_file, traj_plot, height = 8, width = 8)
+    return(pdf_file)
+})
+pdf_combine(pdf_files, output = "results/trajectory_plot_inter.pdf")
 unlink("results/temp", recursive = TRUE)
 
 ################################################################################
