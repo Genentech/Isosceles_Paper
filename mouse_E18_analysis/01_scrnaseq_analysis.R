@@ -147,7 +147,6 @@ marker_sets <- list(
     Mat_Glut = c("Camk2b", "Opcml", "Crym"),
     Rad_glia = c("Fabp7", "Vim", "Dbi"),
     Cyc_rad_glia = c("Cenpf", "Top2a", "Mki67")
-
 )
 
 se_pseudobulk_gene_marker <- se_pseudobulk_gene

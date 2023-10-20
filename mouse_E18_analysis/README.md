@@ -9,6 +9,7 @@
   * **03_run_dexseq_inter.R** - the R script for running DEXSeq on PSI count data (inter-trajectory analysis)
   * **04_psi_heatmap_intra.R** - the R script for creating the PSI event heatmap (intra-trajectory analysis)
   * **05_psi_heatmap_inter.R** - the R script for creating the PSI event heatmap (inter-trajectory analysis)
+  * **06_other_plots.R** - the R script for creating other plots
   * **results/** - a directory for storing output tabular files and plots
 
 ## Input files to download
