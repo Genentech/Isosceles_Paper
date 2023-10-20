@@ -10,6 +10,7 @@
   * **04_psi_heatmap_intra.R** - the R script for creating the PSI event heatmap (intra-trajectory analysis)
   * **05_psi_heatmap_inter.R** - the R script for creating the PSI event heatmap (inter-trajectory analysis)
   * **06_other_plots.R** - the R script for creating other plots
+  * **07_isoswitch_analysis.R** - the R script for isoform switching analysis
   * **results/** - a directory for storing output tabular files and plots
 
 ## Input files to download

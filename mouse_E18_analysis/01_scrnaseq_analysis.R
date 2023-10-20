@@ -183,6 +183,11 @@ sce_glut <- slingshot(sce, reducedDim = "PCA", use.median = TRUE,
                       clusterLabels = sce$cluster_glut,
                       start.clus = "4",
                       stretch = 0, approx_points = 200)
+slingLineages(sce_glut)
+# $Lineage1
+# [1] "4" "8" "5" "7"
+# $Lineage2
+# [1] "4"  "11" "9"
 
 # GABAergic neurons
 sce$cluster_gaba <- ifelse(sce$cluster %in% clusters_gaba,
@@ -192,6 +197,9 @@ sce_gaba <- slingshot(sce, reducedDim = "PCA",
                       clusterLabels = sce$cluster_gaba,
                       start.clus = "2",
                       stretch = 0, approx_points = 200)
+slingLineages(sce_gaba)
+# $Lineage1
+# [1] "2" "3"
 
 # Radial glia
 sce$cluster_rad_glia <- ifelse(sce$cluster %in% clusters_rad_glia,
