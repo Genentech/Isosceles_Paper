@@ -4,7 +4,7 @@ This repository contains scripts and data analysis for the Isosceles paper, enab
 
 ## Section #1. Analysis of Quantifications
 
-In this section, you can access singularity images and benchmark program outputs required to run our scripts in the 'reports' folder, reproducing the figures and plots presented in the paper. Each directory includes a script to download the results from running all programs on the corresponding benchmark. You can execute these scripts using the provided commands below. For more details on the exact commands used to generate the data, please refer to Section #2 or check the brief summary in the [Benchmark_commands.md](Benchmark_commands.md) document.
+In this section, you can access singularity images and benchmark program outputs required to run our scripts in the `reports` folder, reproducing the figures and plots presented in the paper. Each directory includes a script to download the results from running all programs on the corresponding benchmark. You can execute these scripts using the provided commands below. For more details on the exact commands used to generate the data, please refer to Section #2 or check the brief summary in the [Benchmark_commands.md](Benchmark_commands.md) document.
 
 Download and prepare the Singularity images:
 ```bash
@@ -43,7 +43,30 @@ bash run.sh
 cd ..
 ```
 
-## Section #2. (Optional) Re-generating Quantifications from Raw Reads
+## Section #2. Mouse E18 Brain scRNA-Seq (Lebrigand et al.) Data Analysis
+
+The analysis of the Lebrigand et al. data from the paper can be replicated using the code in the `mouse_E18_analysis` directory. You can download the input data for the analysis (including scRNA-Seq BAM files prepared using the Sicelore workflow described in Part #1), or start from any downstream step, as RDS files containing data necessary for further analysis are provided for every script.
+
+Prepare input data for the analysis:
+```bash
+cd mouse_E18_analysis
+bash download_data.sh
+cd ..
+```
+
+Run the following scripts to generate the figures and tables:
+```bash
+00_run_isosceles.R
+01_scrnaseq_analysis.R
+02_run_dexseq_intra.R
+03_run_dexseq_inter.R
+04_psi_heatmap_intra.R
+05_psi_heatmap_inter.R
+06_other_plots.R
+07_isoswitch_analysis.R
+```
+
+## Supplementary Section. (Optional) Re-generating Quantifications from Raw Reads
 
 We also provide the scripts to re-run all the programs to re-generate quantifications used in Part #1 `reports` (provided you download the input data).  This is more involved, and requires significant computation and memory resources.  While Isosceles is fairly efficient and can be run on most systems, not all software benchmarked here is, and so most steps were run on a cluster with 20 CPUs and 200 GB of RAM.  While we provide environments for each software suite, we note that although this runs cleanly on our system, some programs may take some troubleshooting on other systems to get working.
 
