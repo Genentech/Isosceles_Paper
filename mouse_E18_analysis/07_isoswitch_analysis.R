@@ -22,7 +22,6 @@ dir.create(result_dir, recursive = TRUE)
 
 # Read the analysis results from previous steps
 sce <- readRDS("01_scrnaseq_analysis/sce.rds")
-sce_gene <- readRDS("01_scrnaseq_analysis/sce_gene.rds")
 sce_transcript <- readRDS("01_scrnaseq_analysis/sce_transcript.rds")
 
 ################################################################################
@@ -134,24 +133,28 @@ isoswitch_data <- isoswitch_df[, 1:4] %>%
 
 plot_isoform_umap_expression <- function(transcript_id, compatible_tx,
                                          gene_id, gene_name) {
-    p1 <- plot_density(sce_transcript, transcript_id,
+    p1 <- plot_density(sce, transcript_id,
                        size = 1.5) +
         labs(title = "Transcript expression density") +
         theme(legend.position = "right",
-              plot.title = element_text(size = 13))
+              plot.title = element_text(size = 13),
+              legend.title = element_text(size = 11))
     p2 <- plot_density(sce, gene_id,
                        size = 1.5) +
         labs(title = "Gene expression density") +
         theme(legend.position = "right",
-              plot.title = element_text(size = 13))
-    p3 <- dittoDimPlot(sce_transcript,
+              plot.title = element_text(size = 13),
+              legend.title = element_text(size = 11))
+    p3 <- dittoDimPlot(sce,
                        transcript_id,
                        reduction.use = "UMAP",
                        size = 1.5, main = "Transcript expression",
+                       legend.title = "Logcounts",
                        order = "increasing")
     p4 <- dittoDimPlot(sce, gene_id,
                        reduction.use = "UMAP",
                        size = 1.5, main = "Gene expression",
+                       legend.title = "Logcounts",
                        order = "increasing")
 
     patchwork <- (p1 + p2) / (p3 + p4)

@@ -1,4 +1,4 @@
-# Mouse E18 scRNA-Seq (Lebrigand et al.) data analysis
+# Mouse E18 brain scRNA-Seq (Lebrigand et al.) data analysis
 
 ## Content
 

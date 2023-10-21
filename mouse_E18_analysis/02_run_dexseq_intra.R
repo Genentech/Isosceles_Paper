@@ -376,12 +376,14 @@ plot_umap_expression <- function(psi_event, psi_label, pal = NULL) {
                        slot = "psi", size = 1.5) +
         labs(title = "PSI values density") +
         theme(legend.position = "right",
-              plot.title = element_text(size = 13))
+              plot.title = element_text(size = 13),
+              legend.title = element_text(size = 11))
     p2 <- plot_density(sce, gene_id,
                        size = 1.5) +
         labs(title = "Gene expression density") +
         theme(legend.position = "right",
-              plot.title = element_text(size = 13))
+              plot.title = element_text(size = 13),
+              legend.title = element_text(size = 11))
     if (!is.null(pal)) {
         p1 <- p1 +
             scale_color_gradientn(
@@ -397,10 +399,12 @@ plot_umap_expression <- function(psi_event, psi_label, pal = NULL) {
                        reduction.use = "UMAP",
                        assay = "psi",
                        size = 1.5, main = "PSI values",
+                       legend.title = "PSI",
                        order = "increasing")
     p4 <- dittoDimPlot(sce, gene_id,
                        reduction.use = "UMAP",
                        size = 1.5, main = "Gene expression",
+                       legend.title = "Logcounts",
                        order = "increasing")
 
     patchwork <- (p1 + p2) / (p3 + p4)
