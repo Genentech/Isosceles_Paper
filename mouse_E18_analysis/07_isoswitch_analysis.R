@@ -102,7 +102,7 @@ saveRDS(marker_df, file.path(result_dir, "marker_df.rds"))
 
 ################################################################################
 
-# Detect isoform swicthing events
+# Detect isoform switching events
 
 isoswitch_df <- marker_df %>%
     filter(fdr <= 0.05) %>%

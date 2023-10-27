@@ -514,7 +514,7 @@ plot_psi_all_traj <- function(psi_event, psi_label) {
 }
 
 # PSI counts trajectory plots for selected PSI events of the Celf2 gene
-## Glutamatergic trajecotry 1
+## Glutamatergic trajectory 1
 p1 <- plot_psi_single_traj("ENSMUSG00000002107:chr2:6560659-6560670:-:A5",
                            "Celf2:0c9e:A5", "glut_1")
 p2 <- plot_psi_single_traj("ENSMUSG00000002107:chr2:6553965-6553982:-:A3",
