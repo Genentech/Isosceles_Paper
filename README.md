@@ -47,6 +47,13 @@ cd ..
 
 The analysis of the Lebrigand et al. data from the paper can be replicated using the code in the `mouse_E18_analysis` directory. You can download the input data for the analysis (including scRNA-Seq BAM files prepared using the Sicelore workflow described in Part #1), or start from any downstream step, as RDS files containing data necessary for further analysis are provided for every script.
 
+Download and prepare the Singularity images:
+```bash
+cd singularity
+bash run.sh
+cd ..
+```
+
 Prepare input data for the analysis:
 ```bash
 cd mouse_E18_analysis
@@ -54,7 +61,7 @@ bash download_data.sh
 cd ..
 ```
 
-Run the following scripts to generate the figures and tables:
+The `mouse_E18_analysis` directory contains the following scripts for generating the figures and tables:
 ```bash
 00_run_isosceles.R
 01_scrnaseq_analysis.R
@@ -65,6 +72,14 @@ Run the following scripts to generate the figures and tables:
 06_other_plots.R
 07_isoswitch_analysis.R
 ```
+
+You can run these scripts manually in RStudio, or using the following commands (the latter requires Singularity to be installed):
+```bash
+cd mouse_E18_analysis
+bash run.sh
+cd ..
+```
+
 
 ## Supplementary Section. (Optional) Re-generating Quantifications from Raw Reads
 

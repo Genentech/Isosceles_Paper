@@ -3,6 +3,7 @@
 ## Content
 
   * **download_data.sh** - the script for downloading input data for the analysis
+  * **run.sh** - the script for running the analysis scripts
   * **00_run_isosceles.R** - the R script for processing input data using Isosceles (transcript detection and expression quantification)
   * **01_scrnaseq_analysis.R** - the R script for basic scRNA-Seq analysis (dimensionality reduction, clustering etc.)
   * **02_run_dexseq_intra.R** - the R script for running DEXSeq on PSI count data (intra-trajectory analysis)
