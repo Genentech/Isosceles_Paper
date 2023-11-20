@@ -1,6 +1,6 @@
 # Isosceles paper
 
-This repository contains scripts and data analysis for the Isosceles paper, enabling the replication of data, analyses, and plots featured in the paper. The repository is divided into three main sections:
+This repository contains scripts and data analysis for the Isosceles paper, enabling the replication of data, analyses, and plots featured in the paper. The repository is divided into two main sections:
 
 ## Section #1. Analysis of Quantifications
 
