@@ -13,4 +13,5 @@
 ## Required programs and libraries
 
   * conda
+  * SRA Toolkit
   * samtools (>= 1.10)

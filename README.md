@@ -105,8 +105,7 @@ bash run.sh
 cd ..
 ```
 
-Prepare input data for the analysis using (Note: this script also contains 
-information about manually downloading data from EGA):
+Prepare input data for the analysis using:
 ```bash
 cd input_data
 bash run.sh
