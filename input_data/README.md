@@ -9,6 +9,7 @@
   * **fastq_sim/** - a directory for storing simulated Nanopore FASTQ files
   * **bam_sim/** - a directory for storing simulated Nanopore scRNA-Seq BAM files
   * **cellranger/** - a directory for storing Illumina CellRanger output files
+  * **read_models/** - a directory for storing selected read model files used for simulating Nanopore data
 
 ## Required programs and libraries
 
