@@ -4,7 +4,7 @@ This repository contains scripts and data analysis for the Isosceles paper, enab
 
 ## Section #1. Analysis of Quantifications
 
-In this section, you can access singularity images and benchmark program outputs required to run our scripts in the `reports` folder, reproducing the figures and plots presented in the paper. Each directory includes a script to download the results from running all programs on the corresponding benchmark. You can execute these scripts using the provided commands below. For more details on the exact commands used to generate the data, please refer to Section #2 or check the brief summary in the [Benchmark_commands.md](Benchmark_commands.md) document.
+In this section, you can access singularity images and benchmark program outputs required to run our scripts in the `reports` folder, reproducing the figures and plots presented in the paper. Each directory includes a script to download the results from running all programs on the corresponding benchmark. You can execute these scripts using the provided commands below. For more details on the exact commands used to generate the data, please refer to  the Supplementary Section at the bottom or check the brief summary in the [Benchmark_commands.md](Benchmark_commands.md) document.
 
 Download and prepare the Singularity images:
 ```bash
