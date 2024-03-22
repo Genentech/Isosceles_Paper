@@ -29,8 +29,9 @@ dir.create(result_dir, recursive = TRUE)
 
 # Preparing transcript set
 min_intron_length <- 30
+max_intron_length <- 5e6
 known_intron_motifs <- c("GT-AG")
-rescue_annotated_introns <- FALSE
+rescue_annotated_introns <- TRUE
 min_bam_intron_read_count <- 2
 bin_size <- 50
 known_intron_granges <- rtracklayer::import(intron_bed_file)
@@ -38,6 +39,7 @@ transcript_data <- prepare_transcripts(
     gtf_file = gtf_file, genome_fasta_file = genome_fasta_file,
     bam_parsed = NULL,
     min_intron_length = min_intron_length,
+    max_intron_length = max_intron_length,
     known_intron_motifs = known_intron_motifs,
     rescue_annotated_introns = rescue_annotated_introns,
     known_intron_granges = known_intron_granges,
