@@ -1,0 +1,133 @@
+---
+title: "Benchmarking program resource usage on 5M IGROV-1 Promethion reads"
+output:
+  html_document:
+    highlight: pygments
+    df_print: paged
+    toc: true
+    toc_depth: 2
+---
+
+# Preparing the data
+
+Load the required packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(glue)
+library(scales)
+library(ggpattern)
+```
+
+Prepare plot data:
+```{r, message = FALSE, warning = FALSE}
+tools_cpu <- c("Isosceles", "IsoQuant", "Bambu", "Flair", "NanoCount", "LIQA",
+               "ESPRESSO", "FLAMES", "Sicelore")
+total_cpu_df <- data.frame(
+    tool = rep(tools_cpu, 2),
+    step = rep(c("run_program", "minimap2_align"), each = length(tools_cpu)),
+    value = c(c(34, 149, 22, 694, 4, 1621, 3063, 239, 43),
+              c(1483, 1483, 1483, 1483, 456, 1483, 1483, 1483, 1483))
+)
+tools_mem <- c("Isosceles", "IsoQuant", "Bambu", "Flair", "NanoCount", "LIQA",
+               "ESPRESSO", "FLAMES", "Sicelore", "minimap2",
+               "minimap2_trans")
+max_memory_df <- data.frame(
+    tool = tools_mem,
+    value = c(6.1, 19.8, 5.7, 6.6, 3.8, 1.7, 29.2, 10, 8.2, 24.6, 5.4)
+)
+total_cpu_df$tool <- fct_rev(fct_reorder(
+    total_cpu_df$tool, total_cpu_df$value, .fun = sum
+))
+total_cpu_df$step <- fct_rev(total_cpu_df$step)
+max_memory_df$tool <- fct_rev(fct_reorder(
+    max_memory_df$tool, max_memory_df$value
+))
+```
+
+# Results
+
+Total CPU time data (min):
+```{r, message = FALSE, warning = FALSE}
+pivot_wider(total_cpu_df, names_from = step, values_from = value)
+```
+
+Max memory usage data (GB):
+```{r, message = FALSE, warning = FALSE, rows.print = 11}
+max_memory_df
+```
+
+Plot total CPU time by program:
+```{r, message = FALSE, warning = FALSE}
+ggplot(total_cpu_df, mapping = aes(x = value,
+                                   y = tool,
+                                   fill = tool,
+                                   pattern = step)) +
+    geom_col_pattern(
+        pattern_color = "lightgrey",
+        pattern_fill = "lightgrey",
+        pattern_spacing = 0.01, pattern_density = 0.05, pattern_size = 0.25
+    ) +
+    scale_x_log10(labels = trans_format("log10", math_format(10^.x))) +
+    coord_cartesian(clip = "off") +
+    annotation_logticks(outside = TRUE,
+                        sides = "b",
+                        size = 0.3,
+                        short = unit(0.05, "cm"),
+                        mid = unit(0.1, "cm"),
+                        long = unit(0.15, "cm")) +
+    scale_fill_manual(values = c(Bambu = "mediumseagreen",
+                                 ESPRESSO = "lightsalmon",
+                                 Flair = "mediumpurple",
+                                 Isosceles = "black",
+                                 IsoQuant = "gold",
+                                 LIQA = "deeppink",
+                                 NanoCount = "cornflowerblue",
+                                 FLAMES = "tomato",
+                                 Sicelore = "royalblue")) +
+    scale_pattern_manual(values = c(minimap2_align = "stripe",
+                                    run_program = "none")) +
+    labs(
+        x = "Total CPU time (min)",
+        y = ""
+    ) +
+    theme_bw() +
+    theme(legend.position = "none",
+          axis.text = element_text(size = 7),
+          axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 9),
+          axis.ticks.x = element_blank())
+```
+
+Plot maximum memory usage by program:
+```{r, message = FALSE, warning = FALSE}
+ggplot(max_memory_df, mapping = aes(x = value,
+                                    y = tool,
+                                    fill = tool)) +
+    geom_col() +
+    scale_fill_manual(values = c(Bambu = "mediumseagreen",
+                                 ESPRESSO = "lightsalmon",
+                                 Flair = "mediumpurple",
+                                 Isosceles = "black",
+                                 IsoQuant = "gold",
+                                 LIQA = "deeppink",
+                                 NanoCount = "cornflowerblue",
+                                 FLAMES = "tomato",
+                                 Sicelore = "royalblue",
+                                 minimap2 = "darkgrey",
+                                 minimap2_trans = "darkgrey")) +
+    labs(
+        x = "Max. memory usage (GB)",
+        y = ""
+    ) +
+    theme_bw() +
+    theme(legend.position = "none",
+          axis.text = element_text(size = 7),
+          axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 9))
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
