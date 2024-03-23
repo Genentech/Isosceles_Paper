@@ -1,0 +1,275 @@
+---
+title: "Benchmarking Isosceles on SIRV data"
+output:
+  html_document:
+    highlight: pygments
+    df_print: paged
+    toc: true
+    toc_depth: 2
+---
+
+# Preparing the data
+
+Load the required packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(glue)
+library(pheatmap)
+library(viridis)
+library(SingleCellExperiment)
+```
+
+Global parameters:
+```{r}
+result_dir <- file.path("..", "sirv_analysis", "report_data")
+sample_ids <- "cdna"
+heatmap_palette <- cividis
+heatmap_palette_direction <- 1
+```
+
+# Over-annotations analysis
+
+Prepare reference data:
+```{r, message = FALSE, warning = FALSE}
+annotations_correct_df <- readRDS(file.path(
+    result_dir, "annotations_correct.rds"
+))$tx_df
+correct_ref_tx_ids <- annotations_correct_df$compatible_tx %>%
+    strsplit(",") %>%
+    unlist() %>%
+    sort()
+```
+
+Prepare Isosceles TPM data:
+```{r, message = FALSE, warning = FALSE}
+isosceles_tpm_list <- lapply(sample_ids, function(sample_id) {
+    se_transcript <- readRDS(file.path(
+        result_dir, glue("isosceles_{sample_id}_over_se_transcript.rds")
+    ))
+    tx_df <- as.data.frame(rowData(se_transcript))
+    tpm_values <- assay(se_transcript, "tpm")[, 1]
+    names(tpm_values) <- sapply(strsplit(tx_df$compatible_tx, ","), "[", 1)
+    return(tpm_values)
+})
+names(isosceles_tpm_list) <- paste0("Isosceles.", sample_ids)
+isosceles_correct_tpm_list <- lapply(isosceles_tpm_list, function(tpms) {
+    tpms[names(tpms) %in% correct_ref_tx_ids]
+})
+isosceles_fractions <- sapply(isosceles_correct_tpm_list, sum) / sapply(isosceles_tpm_list, sum)
+```
+
+Prepare IsoQuant TPM data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_tpm_list <- lapply(sample_ids, function(sample_id) {
+    tx_df <- read_delim(file.path(
+        result_dir, glue("isoquant_{sample_id}_over_transcript_tpm.tsv")
+    ))
+    tpm_values <- tx_df$TPM
+    names(tpm_values) <- tx_df$`#feature_id`
+    return(tpm_values)
+})
+names(isoquant_tpm_list) <- paste0("IsoQuant.", sample_ids)
+isoquant_correct_tpm_list <- lapply(isoquant_tpm_list, function(tpms) {
+    tpms[names(tpms) %in% correct_ref_tx_ids]
+})
+isoquant_fractions <- sapply(isoquant_correct_tpm_list, sum) / sapply(isoquant_tpm_list, sum)
+```
+
+Prepare bambu TPM data:
+```{r, message = FALSE, warning = FALSE}
+bambu_tpm_list <- lapply(sample_ids, function(sample_id) {
+    tx_df <- read_delim(file.path(
+        result_dir, glue("bambu_{sample_id}_over_counts_transcript.txt")
+    ))
+    tpm_values <- tx_df[, 3, drop = TRUE]
+    tpm_values <- tpm_values / sum(tpm_values) * 1e6
+    names(tpm_values) <- tx_df$TXNAME
+    return(tpm_values)
+})
+names(bambu_tpm_list) <- paste0("bambu.", sample_ids)
+bambu_correct_tpm_list <- lapply(bambu_tpm_list, function(tpms) {
+    tpms[names(tpms) %in% correct_ref_tx_ids]
+})
+bambu_fractions <- sapply(bambu_correct_tpm_list, sum) / sapply(bambu_tpm_list, sum)
+```
+
+Plot fractions of TPMs from correct transcripts:
+```{r, message = FALSE, warning = FALSE}
+plot_df <- data.frame(
+    tool = c("Isosceles", "IsoQuant", "Bambu"),
+    value = c(
+        isosceles_fractions["Isosceles.cdna"],
+        isoquant_fractions["IsoQuant.cdna"],
+        bambu_fractions["bambu.cdna"]
+    )
+)
+plot_df$tool <- fct_reorder(plot_df$tool, plot_df$value)
+ggplot(plot_df, mapping = aes(x = value,
+                              y = tool,
+                              fill = tool)) +
+    geom_col() +
+    geom_text(
+        aes(label = format(round(value, 2), nsmall = 2)),
+        size = 3,
+        nudge_x = 0.03,
+        hjust = "outward"
+    ) +
+    scale_fill_manual(values = c(Bambu = "mediumseagreen",
+                                 Isosceles = "black",
+                                 IsoQuant = "gold")) +
+    lims(x = c(0, 1.1)) +
+    labs(
+        x = "Fraction of expression from correct transcripts",
+        y = ""
+    ) +
+    theme_classic() +
+    theme(legend.position = "none",
+          axis.text = element_text(size = 7),
+          axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 8),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank())
+```
+
+# Insufficient annotations analysis
+
+Prepare reference data:
+```{r, message = FALSE, warning = FALSE}
+annotations_correct_df <- readRDS(file.path(
+    result_dir, "annotations_correct.rds"
+))$tx_df
+annotations_insufficient_df <- readRDS(file.path(
+    result_dir, "annotations_insufficient.rds"
+))$tx_df
+correct_intron_positions <- annotations_correct_df$intron_positions
+correct_intron_positions <- unique(correct_intron_positions[
+    !is.na(correct_intron_positions)
+])
+insufficient_intron_positions <- annotations_insufficient_df$intron_positions
+insufficient_intron_positions <- unique(insufficient_intron_positions[
+    !is.na(insufficient_intron_positions)
+])
+```
+
+Prepare Isosceles intron position data:
+```{r, message = FALSE, warning = FALSE}
+isosceles_intron_list <- lapply(sample_ids, function(sample_id) {
+    se_transcript <- readRDS(file.path(
+        result_dir, glue("isosceles_{sample_id}_insufficient_se_transcript.rds")
+    ))
+    intron_positions <- rowData(se_transcript)$intron_positions
+    intron_positions <- unique(intron_positions[!is.na(intron_positions)])
+    return(intron_positions)
+})
+names(isosceles_intron_list) <- paste0("Isosceles.", sample_ids)
+isosceles_tp_list <- lapply(isosceles_intron_list, function(intron_positions) {
+    intron_positions[
+        (intron_positions %in% correct_intron_positions) &
+            (!intron_positions %in% insufficient_intron_positions)
+    ]
+})
+isosceles_fp_list <- lapply(isosceles_intron_list, function(intron_positions) {
+    intron_positions[
+        (!intron_positions %in% correct_intron_positions) &
+            (!intron_positions %in% insufficient_intron_positions)
+    ]
+})
+isosceles_tp <- sapply(isosceles_tp_list, length)
+isosceles_fp <- sapply(isosceles_fp_list, length)
+```
+
+Prepare IsoQuant intron position data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_intron_list <- lapply(sample_ids, function(sample_id) {
+    splicing_df <- Isosceles:::prepare_reference_annotations(file.path(
+        result_dir, glue("isoquant_{sample_id}_insufficient_extended_annotations.gtf")
+    ))$splicing_df
+    intron_positions <- splicing_df$intron_positions
+    return(intron_positions)
+})
+names(isoquant_intron_list) <- paste0("IsoQuant.", sample_ids)
+isoquant_tp_list <- lapply(isoquant_intron_list, function(intron_positions) {
+    intron_positions[
+        (intron_positions %in% correct_intron_positions) &
+            (!intron_positions %in% insufficient_intron_positions)
+    ]
+})
+isoquant_fp_list <- lapply(isoquant_intron_list, function(intron_positions) {
+    intron_positions[
+        (!intron_positions %in% correct_intron_positions) &
+            (!intron_positions %in% insufficient_intron_positions)
+    ]
+})
+isoquant_tp <- sapply(isoquant_tp_list, length)
+isoquant_fp <- sapply(isoquant_fp_list, length)
+```
+
+Prepare bambu intron position data:
+```{r, message = FALSE, warning = FALSE}
+bambu_intron_list <- lapply(sample_ids, function(sample_id) {
+    splicing_df <- Isosceles:::prepare_reference_annotations(file.path(
+        result_dir, glue("bambu_{sample_id}_insufficient_extended_annotations.gtf")
+    ))$splicing_df
+    intron_positions <- splicing_df$intron_positions
+    return(intron_positions)
+})
+names(bambu_intron_list) <- paste0("bambu.", sample_ids)
+bambu_tp_list <- lapply(bambu_intron_list, function(intron_positions) {
+    intron_positions[
+        (intron_positions %in% correct_intron_positions) &
+            (!intron_positions %in% insufficient_intron_positions)
+    ]
+})
+bambu_fp_list <- lapply(bambu_intron_list, function(intron_positions) {
+    intron_positions[
+        (!intron_positions %in% correct_intron_positions) &
+            (!intron_positions %in% insufficient_intron_positions)
+    ]
+})
+bambu_tp <- sapply(bambu_tp_list, length)
+bambu_fp <- sapply(bambu_fp_list, length)
+```
+
+Plot numbers of detected transcripts:
+```{r, message = FALSE, warning = FALSE}
+tools <- c("Isosceles", "IsoQuant", "Bambu")
+plot_df <- data.frame(
+    tool = rep(tools, each = 2),
+    status = rep(c("TP", "FP"), 3),
+    value = c(
+        isosceles_tp["Isosceles.cdna"],
+        isosceles_fp["Isosceles.cdna"],
+        isoquant_tp["IsoQuant.cdna"],
+        isoquant_fp["IsoQuant.cdna"],
+        bambu_tp["bambu.cdna"],
+        bambu_fp["bambu.cdna"]
+    )
+)
+plot_df$tool <- fct_rev(fct_reorder(plot_df$tool, plot_df$value))
+plot_df$status <- factor(plot_df$status, levels = c("TP", "FP"))
+ggplot(plot_df, mapping = aes(x = tool,
+                              y = value,
+                              fill = status)) +
+    geom_col(position = position_dodge(), color = "black", width = 0.5) +
+    scale_fill_manual(values = c(TP = "grey",
+                                 FP = "darkred")) +
+    lims(y = c(0, 8)) +
+    labs(
+        x = "",
+        y = "Number of detected transcripts"
+    ) +
+    theme_classic() +
+    theme(legend.title = element_blank(),
+          legend.position = "top",
+          legend.key.size = unit(0.4, "cm"),
+          aspect.ratio = 1,
+          axis.text = element_text(size = 8),
+          axis.title.x = element_blank(),
+          axis.title.y = element_text(size = 8))
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

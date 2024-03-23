@@ -14,6 +14,7 @@
   * **nanopore_bulk_sc_igrov_mean_rel_diff.Rmd** - Nanopore IGROV-1 bulk RNA-Seq and scRNA-Seq mean relative difference benchmarks
   * **nanopore_bulk_sc_igrov_cor.Rmd** - Nanopore IGROV-1 bulk RNA-Seq and scRNA-Seq correlation benchmarks
   * **nanopore_sc_umap.Rmd** - Nanopore scRNA-Seq UMAP plots
+  * **sirv_benchmarks.Rmd** - SIRV data benchmarks
 
 ## Required programs and libraries
 
