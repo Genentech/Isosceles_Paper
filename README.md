@@ -37,6 +37,9 @@ cd ..
 cd sirv_analysis
 bash download_report_data.sh
 cd ..
+cd sequin_analysis
+bash download_report_data.sh
+cd ..
 ```
 
 Then you can run the desired reports to generate figures - this can be done manually in RStudio and Jupyter, or using the following commands (the latter requires Singularity to be installed):
@@ -135,6 +138,9 @@ cd ..
 cd sirv_analysis
 bash run.sh
 cd ..
+cd sequin_analysis
+bash run.sh
+cd ..
 ```
 
 Finally to prepare the data for the analysis scripts in `reports`, as used in Part #1, you can run the `prepare_report_data.sh` (or `prepare_report_data.R`, depending on the directory) scripts:
@@ -152,6 +158,9 @@ cd nanopore_sc_analysis
 bash prepare_report_data.sh
 cd ..
 cd sirv_analysis
+bash prepare_report_data.sh
+cd ..
+cd sequin_analysis
 bash prepare_report_data.sh
 cd ..
 ```

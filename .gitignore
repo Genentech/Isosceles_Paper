@@ -57,6 +57,7 @@ nanopore_sc_analysis/report_data
 simulated_bulk_analysis/report_data
 simulated_sc_analysis/report_data
 sirv_analysis/report_data
+sequin_analysis/report_data
 reports_static/report_data_isoquant
 
 # Singularity directory
