@@ -14,3 +14,4 @@ singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("nan
 singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("nanopore_bulk_sc_igrov_cor.Rmd")'
 singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("nanopore_sc_umap.Rmd")'
 singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("sirv_benchmarks.Rmd")'
+singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("sequin_benchmarks.Rmd")'
