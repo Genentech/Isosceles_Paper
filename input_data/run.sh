@@ -37,10 +37,28 @@ samtools index cellranger/possorted_genome_bam.bam
 cd fastq_sim
 wget https://zenodo.org/record/8180696/files/truncated_bulk_rnaseq.fastq.gz
 wget https://zenodo.org/record/8180696/files/truncated_scrnaseq.fastq.gz
+wget https://zenodo.org/record/0000000/files/COV362_Rep2.fastq.gz
+wget https://zenodo.org/record/0000000/files/IGROV-1_Rep2.fastq.gz
+wget https://zenodo.org/record/0000000/files/OVKATE_Rep2.fastq.gz
+wget https://zenodo.org/record/0000000/files/OVMANA_Rep2.fastq.gz
+wget https://zenodo.org/record/0000000/files/OVTOKO_Rep2.fastq.gz
+wget https://zenodo.org/record/0000000/files/SK-OV-3_Rep2.fastq.gz
 cd ..
 
-# Download the simulated Nanopore scRNA-Seq BAM file
+# Download simulated Nanopore scRNA-Seq BAM files
 cd bam_sim
 wget https://zenodo.org/record/8180696/files/truncated_scrnaseq.bam
 samtools index truncated_scrnaseq.bam
+wget https://zenodo.org/record/0000000/files/COV362_Rep1.bam
+samtools index COV362_Rep1.bam
+wget https://zenodo.org/record/0000000/files/IGROV-1_Rep1.bam
+samtools index IGROV-1.bam
+wget https://zenodo.org/record/0000000/files/OVKATE_Rep1.bam
+samtools index OVKATE_Rep1.bam
+wget https://zenodo.org/record/0000000/files/OVMANA_Rep1.bam
+samtools index OVMANA_Rep1.bam
+wget https://zenodo.org/record/0000000/files/OVTOKO_Rep1.bam
+samtools index OVTOKO_Rep1.bam
+wget https://zenodo.org/record/0000000/files/SK-OV-3_Rep1.bam
+samtools index SK-OV-3_Rep1.bam
 cd ..
