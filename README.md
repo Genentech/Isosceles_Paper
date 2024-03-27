@@ -28,6 +28,9 @@ cd ..
 cd simulated_sc_analysis
 bash download_report_data.sh
 cd ..
+cd simulated_ovarian_analysis
+bash download_report_data.sh
+cd ..
 cd nanopore_bulk_analysis
 bash download_report_data.sh
 cd ..
@@ -126,6 +129,9 @@ cd ..
 cd simulated_sc_analysis
 bash run.sh
 cd ..
+cd simulated_ovarian_analysis
+bash run.sh
+cd ..
 cd illumina_sc_analysis
 bash run.sh
 cd ..
@@ -149,6 +155,9 @@ cd simulated_bulk_analysis
 singularity exec ../singularity/isosceles.sif Rscript prepare_report_data.R
 cd ..
 cd simulated_sc_analysis
+bash prepare_report_data.sh
+cd ..
+cd simulated_ovarian_analysis
 bash prepare_report_data.sh
 cd ..
 cd nanopore_bulk_analysis
