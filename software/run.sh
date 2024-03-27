@@ -46,6 +46,7 @@ conda env create -f conda_env/isosceles_liqa.yml
 conda env create -f conda_env/isosceles_nanocount.yml
 conda env create -f conda_env/isosceles_nanosim.yml
 conda env create -f conda_env/isosceles_stringtie.yml
+conda env create -f conda_env/isosceles_umitools.yml
 
 # Clone program repositories from GitHub
 cd git
