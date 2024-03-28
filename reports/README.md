@@ -16,6 +16,7 @@
   * **nanopore_sc_umap.Rmd** - Nanopore scRNA-Seq UMAP plots
   * **sirv_benchmarks.Rmd** - SIRV data benchmarks
   * **sequin_benchmarks.Rmd** - Sequin data benchmarks
+  * **pacbio_benchmarks.Rmd** - Pacbio, Nanopore and Illumina GM12878 data benchmarks
 
 ## Required programs and libraries
 
