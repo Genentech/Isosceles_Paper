@@ -1,7 +1,6 @@
 #!/usr/bin/env Rscript
 
 suppressMessages({
-  library(devtools)
   library(tidyverse)
   library(glue)
   library(GenomicFeatures)
