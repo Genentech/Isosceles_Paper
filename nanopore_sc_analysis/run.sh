@@ -194,6 +194,58 @@ java $java_xmx_flag -jar ../software/git/sicelore/Jar/Sicelore-2.0.jar \
   CSV=../illumina_sc_analysis/data/barcodes.csv \
   DELTA=2 MAXCLIP=150 METHOD=STRICT AMBIGUOUS_ASSIGN=false
 
+# wf-single-cell: prepare Cell Ranger custom reference data
+mkdir -p reference_data
+cellranger mkref --nthreads=$ncpu \
+  --genome=reference_data/ensembl_90 \
+  --fasta=../reference_data/genome.fasta \
+  --genes=../reference_data/ensembl_90.gtf
+gunzip reference_data/ensembl_90/genes/genes.gtf.gz
+
+# wf-single-cell: run the wf-single-cell workflow
+mkdir -p wf_single_cell_results/workdir
+export TMPDIR=$temp_dir
+nextflow run epi2me-labs/wf-single-cell -r v1.1.0 \
+  -process.executor='local' \
+  -c ../software/configs/nextflow.config \
+  -profile singularity \
+  -work-dir wf_single_cell_results/workdir \
+  --max_threads $ncpu \
+  --resources_mm2_max_threads $ncpu \
+  --resources_mm2_flags="--junc-bonus 15" \
+  --merge_bam True \
+  --fastq fastq/${sample_id}.fastq.gz \
+  --kit_name 3prime \
+  --kit_version v3 \
+  --expected_cells 2000 \
+  --ref_genome_dir reference_data/ensembl_90 \
+  --plot_umaps \
+  --out_dir wf_single_cell_results
+
+# wf-single-cell: filter alignments with the correct UMI length
+samtools view -b \
+  --expr 'length([UB]) == 12' \
+  wf_single_cell_results/${sample_id}/bams/${sample_id}.tagged.sorted.bam \
+  > wf_single_cell_results/${sample_id}/bams/${sample_id}.filtered.bam
+samtools index wf_single_cell_results/${sample_id}/bams/${sample_id}.filtered.bam
+
+# wf-single-cell: deduplicate reads using UMI and mapping coordinates
+conda activate isosceles_umitools
+mkdir -p wf_single_cell_results/umi_tools_dedup
+umi_tools dedup \
+  --extract-umi-method=tag \
+  --method=directional \
+  --per-gene \
+  --per-cell \
+  --umi-tag=UB \
+  --cell-tag=CB \
+  --gene-tag=GN \
+  --stdin wf_single_cell_results/${sample_id}/bams/${sample_id}.filtered.bam \
+  --output-stats=wf_single_cell_results/umi_tools_dedup/${sample_id} \
+  --stdout wf_single_cell_results/umi_tools_dedup/${sample_id}.bam
+samtools index wf_single_cell_results/umi_tools_dedup/${sample_id}.bam
+conda deactivate
+
 # Run IsoQuant
 conda activate isosceles_isoquant
 mkdir -p isoquant_results
@@ -208,5 +260,8 @@ isoquant.py \
   -o isoquant_results
 conda deactivate
 
-# Run Isosceles
+# Run Isosceles (Sicelore input)
 singularity exec ../singularity/isosceles.sif Rscript run_isosceles.R
+
+# Run Isosceles (wf-single-cell input)
+singularity exec ../singularity/isosceles.sif Rscript run_isosceles_wf.R
