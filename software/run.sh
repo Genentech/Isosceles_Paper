@@ -71,3 +71,7 @@ cd sicelore
 git checkout 1219f60af40c30ed20f74c79b380673c992326fa
 cd ..
 cd ..
+
+# Download Nextflow workflows
+## wf-single-cell
+nextflow pull epi2me-labs/wf-single-cell -r master
