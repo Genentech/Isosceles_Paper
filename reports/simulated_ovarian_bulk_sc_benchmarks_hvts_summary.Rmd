@@ -1,0 +1,109 @@
+---
+title: "Simulated ovarian cell line bulk RNA-Seq and scRNA-Seq data benchmarks (top highly variable transcripts results summary)"
+output:
+  html_document:
+    highlight: pygments
+    df_print: paged
+    toc: true
+    toc_depth: 2
+---
+
+# Preparing the data
+
+Load the required packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(glue)
+```
+
+Global parameters:
+```{r, message = FALSE, warning = FALSE}
+csv_dir <- "simulated_ovarian_bulk_sc_benchmarks_hvts_data"
+top_n_hvts_values <- c(500, 1000, 2000, 4000, 6000, 10000)
+```
+
+Prepare plot data:
+```{r, message = FALSE, warning = FALSE}
+plot_df_list <- lapply(top_n_hvts_values, function(top_n_hvts) {
+    plot_df <- read.csv(file.path(
+        csv_dir, glue("data_{top_n_hvts}_hvts.csv")
+    ), row.names = 1)
+    plot_df <- as.data.frame(t(plot_df))
+    plot_df$tool <- rownames(plot_df)
+    rownames(plot_df) <- NULL
+    plot_df$top_n_hvts <- top_n_hvts
+    plot_df <- plot_df %>%
+        select("tool", "top_n_hvts", "corr_spearman",
+               "corr_spearman_upper_ci_95", "corr_spearman_lower_ci_95",
+                "corr_spearman_upper_ci_90", "corr_spearman_lower_ci_90",
+               "corr_spearman_upper_ci_68", "corr_spearman_lower_ci_68",
+               "mean_rel_diff",
+               "mean_rel_diff_upper_ci_95", "mean_rel_diff_lower_ci_95",
+               "mean_rel_diff_upper_ci_90", "mean_rel_diff_lower_ci_90",
+               "mean_rel_diff_upper_ci_68", "mean_rel_diff_lower_ci_68")
+    return(plot_df)
+})
+plot_df <- do.call(rbind, plot_df_list)
+```
+
+# Results
+
+Matched - decoy plot (Spearman correlation, standard error interval):
+```{r, message = FALSE, warning = FALSE}
+ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
+    geom_line(mapping = aes(y = corr_spearman,
+                            col = tool),
+              size = 1) +
+    geom_ribbon(mapping = aes(ymin = corr_spearman_lower_ci_68,
+                              ymax = corr_spearman_upper_ci_68,
+                              fill = tool),
+                alpha = 0.1) +
+    scale_color_manual(values = c(Isosceles = "black",
+                                  IsoQuant = "gold",
+                                  FLAMES = "tomato",
+                                  Sicelore = "royalblue")) +
+    scale_fill_manual(values = c(Isosceles = "black",
+                                 IsoQuant = "gold",
+                                 FLAMES = "tomato",
+                                 Sicelore = "royalblue")) +
+    labs(
+        x = "Top N variable transcripts",
+        y = "Matched - decoy (correlation)"
+    ) +
+    theme_bw() +
+    theme(aspect.ratio = 1,
+          legend.title = element_blank())
+```
+
+Matched - decoy plot (mean relative difference, standard error interval):
+```{r, message = FALSE, warning = FALSE}
+ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
+    geom_line(mapping = aes(y = mean_rel_diff,
+                            col = tool),
+              size = 1) +
+    geom_ribbon(mapping = aes(ymin = mean_rel_diff_lower_ci_68,
+                              ymax = mean_rel_diff_upper_ci_68,
+                              fill = tool),
+                alpha = 0.1) +
+    scale_color_manual(values = c(Isosceles = "black",
+                                  IsoQuant = "gold",
+                                  FLAMES = "tomato",
+                                  Sicelore = "royalblue")) +
+    scale_fill_manual(values = c(Isosceles = "black",
+                                 IsoQuant = "gold",
+                                 FLAMES = "tomato",
+                                 Sicelore = "royalblue")) +
+    labs(
+        x = "Top N variable transcripts",
+        y = "Matched - decoy (mean rel. diff.)"
+    ) +
+    theme_bw() +
+    theme(aspect.ratio = 1,
+          legend.title = element_blank())
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```
