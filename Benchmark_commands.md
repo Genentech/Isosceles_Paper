@@ -65,7 +65,7 @@ stringtie --merge -G {gtf_file} -o {stringtie_gtf_file} {stringtie_raw_gtf_file}
 ```r
 genome_seq <- Biostrings::readDNAStringSet({genome_fasta}, format = "fasta")
 names(genome_seq) <- sapply(strsplit(names(genome_seq), "\\s+"), "[", 1)
-txdb <- GenomicFeatures::makeTxDbFromGFF({stringtie_gtf_file}})
+txdb <- GenomicFeatures::makeTxDbFromGFF({stringtie_gtf_file})
 transcriptome_seq <- GenomicFeatures::extractTranscriptSeqs(genome_seq, txdb, use.names = TRUE)
 Biostrings::writeXStringSet(transcriptome_seq, {stringtie_transcriptome_fasta_file}, format = "fasta")
 ```
@@ -74,7 +74,7 @@ Biostrings::writeXStringSet(transcriptome_seq, {stringtie_transcriptome_fasta_fi
 
 ### Transcript quantification
 ```r
-txdb <- GenomicFeatures::makeTxDbFromGFF({gtf_file}})
+txdb <- GenomicFeatures::makeTxDbFromGFF({gtf_file})
 annotations <- bambu::prepareAnnotations(txdb)
 se <- bambu::bambu(reads = {bam_file}, annotations = annotations, genome = {genome_fasta_file}, discovery = FALSE, ncore = {threads}, yieldSize = 1e6, lowMemory = TRUE)
 bambu::writeBambuOutput(se, path = {output_directory}, prefix = {output_file_prefix})
@@ -82,7 +82,7 @@ bambu::writeBambuOutput(se, path = {output_directory}, prefix = {output_file_pre
 
 ### De novo detection
 ```r
-txdb <- GenomicFeatures::makeTxDbFromGFF({gtf_file}})
+txdb <- GenomicFeatures::makeTxDbFromGFF({gtf_file})
 annotations <- bambu::prepareAnnotations(txdb)
 se <- bambu::bambu(reads = {bam_file}, annotations = annotations, genome = {genome_fasta_file}, discovery = TRUE, ncore = {threads}, yieldSize = 1e6, lowMemory = TRUE)
 bambu::writeBambuOutput(se, path = {output_directory}, prefix = {output_file_prefix})
@@ -139,6 +139,32 @@ gtfToGenePred -genePredExt -ignoreGroupsWithoutExons {gtf_file} /dev/stdout | aw
 ### Running Sicelore
 ```bash
 java -jar Sicelore-2.0.jar IsoformMatrix I={bam_file} OUTDIR={output_directory} PREFIX={output_file_prefix} ISOBAM=true GENETAG=GE UMITAG=U8 CELLTAG=BC REFFLAT={refflat_file} CSV={cell_barcodes_file} DELTA=2 MAXCLIP=150 METHOD=STRICT AMBIGUOUS_ASSIGN=false
+```
+
+## wf-single-cell 
+
+### Preparing Cell Ranger custom reference data
+```bash
+cellranger mkref --nthreads={threads} --genome={cellranger_directory} --fasta={genome_fasta_file} --genes={gtf_file}
+gunzip {cellranger_directory}/genes/genes.gtf.gz
+```
+
+### Running the wf-single-cell workflow
+```bash
+export TMPDIR={temp_directory}
+nextflow run epi2me-labs/wf-single-cell -r v1.1.0 -process.executor='local' -c {config_file} -profile singularity -work-dir {work_directory} --max_threads {threads} --resources_mm2_max_threads {threads} --resources_mm2_flags="--junc-bonus 15" --merge_bam True --fastq {fastq_file} --kit_name 3prime --kit_version v3 --expected_cells 2000 --ref_genome_dir {cellranger_directory} --plot_umaps --out_dir {output_directory}
+```
+
+### Filtering alignments with the correct UMI length
+```bash
+samtools view -b --expr 'length([UB]) == 12' {input_bam_file} > {bam_file}
+samtools index {bam_file}
+```
+
+### Deduplicating reads using UMI and mapping coordinates
+```bash
+umi_tools dedup --extract-umi-method=tag --method=directional --per-gene --per-cell --umi-tag=UB --cell-tag=CB --gene-tag=GN --stdin {input_bam_file} --output-stats={stats_file_prefix} --stdout {bam_file}
+samtools index {bam_file}
 ```
 
 ## IsoQuant
