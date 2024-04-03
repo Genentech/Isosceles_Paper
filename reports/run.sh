@@ -23,6 +23,8 @@ singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("sim
 singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("simulated_ovarian_bulk_sc_benchmarks_hvts_10000.Rmd")'
 singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("simulated_ovarian_bulk_sc_benchmarks_hvts_summary.Rmd")'
 singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("simulated_ovarian_bulk_sc_benchmarks_tpm.Rmd")'
+singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("nanopore_sc_umi_benchmarks.Rmd")'
+singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("nanopore_bulk_sc_umi_benchmarks_tpm.Rmd")'
 singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("nanopore_bulk_igrov_mean_rel_diff.Rmd")'
 singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("nanopore_bulk_sc_igrov_mean_rel_diff.Rmd")'
 singularity exec ../singularity/isosceles.sif Rscript -e 'rmarkdown::render("nanopore_bulk_sc_igrov_cor.Rmd")'
