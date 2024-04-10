@@ -27,6 +27,16 @@ ont_sample_id <- "NA12878_ONT"
 min_tpm <- 1
 ```
 
+Helper functions:
+```{r}
+mean_rel_diff <- function(x, y) {
+    selector <- (x != 0) & (y != 0)
+    x <- x[selector]
+    y <- y[selector]
+    mean(abs(x - y) / ((x + y) / 2))
+}
+```
+
 Prepare Isosceles transcript ID map data:
 ```{r, message = FALSE, warning = FALSE}
 se <- readRDS(file.path(
@@ -51,10 +61,13 @@ illumina_df <- filter(illumina_df, grepl("^ENST", transcript_id), TPM > min_tpm)
 illumina_tpm <- illumina_df$TPM
 names(illumina_tpm) <- sapply(strsplit(illumina_df$transcript_id, "\\."), "[", 1)
 illumina_tpm <- illumina_tpm[names(illumina_tpm) %in% all_tx_ids]
+illumina_tpm <- illumina_tpm / sum(illumina_tpm) * 1e6
 illumina_tx_ids <- names(illumina_tpm)
 illumina_isosceles_tpm <- tapply(
     illumina_tpm, tx2isosceles[names(illumina_tpm)], sum
 )
+illumina_isosceles_tpm <- illumina_isosceles_tpm /
+    sum(illumina_isosceles_tpm) * 1e6
 illumina_isosceles_tx_ids <- names(illumina_isosceles_tpm)
 ```
 
@@ -65,11 +78,13 @@ se_pacbio <- readRDS(file.path(
 ))
 isosceles_pacbio_tpm <- assay(se_pacbio, "tpm")[, 1]
 isosceles_pacbio_tpm <- isosceles_pacbio_tpm[illumina_isosceles_tx_ids]
+isosceles_pacbio_tpm <- isosceles_pacbio_tpm / sum(isosceles_pacbio_tpm) * 1e6
 se_ont <- readRDS(file.path(
     result_dir, glue("isosceles_{ont_sample_id}_se_transcript.rds")
 ))
 isosceles_ont_tpm <- assay(se_ont, "tpm")[, 1]
 isosceles_ont_tpm <- isosceles_ont_tpm[illumina_isosceles_tx_ids]
+isosceles_ont_tpm <- isosceles_ont_tpm / sum(isosceles_ont_tpm) * 1e6
 ```
 
 Prepare IsoQuant TPM data:
@@ -82,7 +97,7 @@ names(isoquant_pacbio_tpm) <- isoquant_pacbio_df[, 1, drop = TRUE]
 isoquant_pacbio_tpm <- isoquant_pacbio_tpm[illumina_tx_ids]
 isoquant_pacbio_tpm[is.na(isoquant_pacbio_tpm)] <- 0
 names(isoquant_pacbio_tpm) <- illumina_tx_ids
-
+isoquant_pacbio_tpm <- isoquant_pacbio_tpm / sum(isoquant_pacbio_tpm) * 1e6
 isoquant_ont_df <- read_delim(file.path(
     result_dir, glue("isoquant_{ont_sample_id}_transcript_tpm.tsv")
 ))
@@ -91,7 +106,7 @@ names(isoquant_ont_tpm) <- isoquant_ont_df[, 1, drop = TRUE]
 isoquant_ont_tpm <- isoquant_ont_tpm[illumina_tx_ids]
 isoquant_ont_tpm[is.na(isoquant_ont_tpm)] <- 0
 names(isoquant_ont_tpm) <- illumina_tx_ids
-
+isoquant_ont_tpm <- isoquant_ont_tpm / sum(isoquant_ont_tpm) * 1e6
 ```
 
 Prepare bambu TPM data:
@@ -103,6 +118,7 @@ bambu_pacbio_tpm <- bambu_pacbio_df[, 3, drop = TRUE]
 names(bambu_pacbio_tpm) <- bambu_pacbio_df$TXNAME
 bambu_pacbio_tpm <- bambu_pacbio_tpm / sum(bambu_pacbio_tpm) * 1e6
 bambu_pacbio_tpm <- bambu_pacbio_tpm[illumina_tx_ids]
+bambu_pacbio_tpm <- bambu_pacbio_tpm / sum(bambu_pacbio_tpm) * 1e6
 bambu_ont_df <- read_delim(file.path(
     result_dir, glue("bambu_{ont_sample_id}_counts_transcript.txt")
 ))
@@ -110,6 +126,7 @@ bambu_ont_tpm <- bambu_ont_df[, 3, drop = TRUE]
 names(bambu_ont_tpm) <- bambu_ont_df$TXNAME
 bambu_ont_tpm <- bambu_ont_tpm / sum(bambu_ont_tpm) * 1e6
 bambu_ont_tpm <- bambu_ont_tpm[illumina_tx_ids]
+bambu_ont_tpm <- bambu_ont_tpm / sum(bambu_ont_tpm) * 1e6
 ```
 
 # Results
@@ -223,6 +240,126 @@ ggplot(spearman_cor_df, mapping = aes(x = value,
         lims(x = c(0, 1)) +
         labs(
             x = "Correlation value",
+            y = ""
+        ) +
+        theme_classic() +
+        theme(legend.position = "none",
+              axis.text = element_text(size = 7),
+              axis.title.y = element_blank(),
+              axis.title.x = element_text(size = 9),
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank())
+```
+
+Prepare mean relative difference data:
+```{r, message = FALSE, warning = FALSE}
+mean_rel_diff_df <- data.frame(
+    tool = c("Isosceles", "IsoQuant", "Bambu"),
+    pacbio_illumina = c(
+        mean_rel_diff(isosceles_pacbio_tpm, illumina_isosceles_tpm),
+        mean_rel_diff(isoquant_pacbio_tpm, illumina_tpm),
+        mean_rel_diff(bambu_pacbio_tpm, illumina_tpm)
+    ),
+    ont_illumina = c(
+        mean_rel_diff(isosceles_ont_tpm, illumina_isosceles_tpm),
+        mean_rel_diff(isoquant_ont_tpm, illumina_tpm),
+        mean_rel_diff(bambu_ont_tpm, illumina_tpm)
+    ),
+    pacbio_ont = c(
+        mean_rel_diff(isosceles_pacbio_tpm, isosceles_ont_tpm),
+        mean_rel_diff(isoquant_pacbio_tpm, isoquant_ont_tpm),
+        mean_rel_diff(bambu_pacbio_tpm, bambu_ont_tpm)
+    )
+)
+```
+
+Mean relative difference data:
+```{r, message = FALSE, warning = FALSE}
+mean_rel_diff_df
+```
+
+Plot mean relative difference (Pacbio vs Illumina):
+```{r, message = FALSE, warning = FALSE}
+mean_rel_diff_df$value <- mean_rel_diff_df$pacbio_illumina
+mean_rel_diff_df$tool <- fct_reorder(mean_rel_diff_df$tool,
+                                     mean_rel_diff_df$value)
+ggplot(mean_rel_diff_df, mapping = aes(x = value,
+                                       y = tool,
+                                       fill = tool)) +
+        geom_col() +
+        geom_text(
+            aes(label = format(round(value, 2), nsmall = 2)),
+            size = 3,
+            hjust = -0.4
+        ) +
+        scale_fill_manual(values = c(Bambu = "mediumseagreen",
+                                     Isosceles = "black",
+                                     IsoQuant = "gold")) +
+        lims(x = c(0, 1.2)) +
+        labs(
+            x = "Mean rel. diff.",
+            y = ""
+        ) +
+        theme_classic() +
+        theme(legend.position = "none",
+              axis.text = element_text(size = 7),
+              axis.title.y = element_blank(),
+              axis.title.x = element_text(size = 9),
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank())
+```
+
+Plot mean relative difference (Nanopore vs Illumina):
+```{r, message = FALSE, warning = FALSE}
+mean_rel_diff_df$value <- mean_rel_diff_df$ont_illumina
+mean_rel_diff_df$tool <- fct_reorder(mean_rel_diff_df$tool,
+                                     mean_rel_diff_df$value)
+ggplot(mean_rel_diff_df, mapping = aes(x = value,
+                                       y = tool,
+                                       fill = tool)) +
+        geom_col() +
+        geom_text(
+            aes(label = format(round(value, 2), nsmall = 2)),
+            size = 3,
+            hjust = -0.4
+        ) +
+        scale_fill_manual(values = c(Bambu = "mediumseagreen",
+                                     Isosceles = "black",
+                                     IsoQuant = "gold")) +
+        lims(x = c(0, 1.2)) +
+        labs(
+            x = "Mean rel. diff.",
+            y = ""
+        ) +
+        theme_classic() +
+        theme(legend.position = "none",
+              axis.text = element_text(size = 7),
+              axis.title.y = element_blank(),
+              axis.title.x = element_text(size = 9),
+              axis.text.x = element_blank(),
+              axis.ticks.x = element_blank())
+```
+
+Plot mean relative difference (Pacbio vs Nanopore):
+```{r, message = FALSE, warning = FALSE}
+mean_rel_diff_df$value <- mean_rel_diff_df$pacbio_ont
+mean_rel_diff_df$tool <- fct_reorder(mean_rel_diff_df$tool,
+                                     mean_rel_diff_df$value)
+ggplot(mean_rel_diff_df, mapping = aes(x = value,
+                                       y = tool,
+                                       fill = tool)) +
+        geom_col() +
+        geom_text(
+            aes(label = format(round(value, 2), nsmall = 2)),
+            size = 3,
+            hjust = -0.4
+        ) +
+        scale_fill_manual(values = c(Bambu = "mediumseagreen",
+                                     Isosceles = "black",
+                                     IsoQuant = "gold")) +
+        lims(x = c(0, 1.2)) +
+        labs(
+            x = "Mean rel. diff.",
             y = ""
         ) +
         theme_classic() +
