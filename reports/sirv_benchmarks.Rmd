@@ -23,8 +23,6 @@ Global parameters:
 ```{r}
 result_dir <- file.path("..", "sirv_analysis", "report_data")
 sample_ids <- "cdna"
-heatmap_palette <- cividis
-heatmap_palette_direction <- 1
 ```
 
 # Over-annotations analysis
@@ -119,7 +117,7 @@ ggplot(plot_df, mapping = aes(x = value,
                                  IsoQuant = "gold")) +
     lims(x = c(0, 1.1)) +
     labs(
-        x = "Fraction of expression from correct transcripts",
+        x = "Read precision (expression from correct transcripts)",
         y = ""
     ) +
     theme_classic() +
@@ -151,31 +149,40 @@ insufficient_intron_positions <- unique(insufficient_intron_positions[
 ])
 ```
 
+Helper functions:
+```{r, message = FALSE, warning = FALSE}
+precision <- function(intron_positions) {
+    TP <- sum(intron_positions %in% correct_intron_positions)
+    FP <- sum(!intron_positions %in% correct_intron_positions)
+    return(TP / (FP + TP))
+}
+recall <- function(intron_positions) {
+    TP <- sum(intron_positions %in% correct_intron_positions)
+    P <- length(correct_intron_positions)
+    return(TP / P)
+}
+f1_score <- function(intron_positions) {
+    TP <- sum(intron_positions %in% correct_intron_positions)
+    FP <- sum(!intron_positions %in% correct_intron_positions)
+    P <- length(correct_intron_positions)
+    FN <- P - TP
+    return(2 * TP / (2*TP + FP + FN))
+}
+```
+
 Prepare Isosceles intron position data:
 ```{r, message = FALSE, warning = FALSE}
 isosceles_intron_list <- lapply(sample_ids, function(sample_id) {
     se_transcript <- readRDS(file.path(
         result_dir, glue("isosceles_{sample_id}_insufficient_se_transcript.rds")
     ))
+    tpm_values <- assay(se_transcript, "tpm")[, 1]
+    se_transcript <- se_transcript[tpm_values > 0,]
     intron_positions <- rowData(se_transcript)$intron_positions
     intron_positions <- unique(intron_positions[!is.na(intron_positions)])
     return(intron_positions)
 })
 names(isosceles_intron_list) <- paste0("Isosceles.", sample_ids)
-isosceles_tp_list <- lapply(isosceles_intron_list, function(intron_positions) {
-    intron_positions[
-        (intron_positions %in% correct_intron_positions) &
-            (!intron_positions %in% insufficient_intron_positions)
-    ]
-})
-isosceles_fp_list <- lapply(isosceles_intron_list, function(intron_positions) {
-    intron_positions[
-        (!intron_positions %in% correct_intron_positions) &
-            (!intron_positions %in% insufficient_intron_positions)
-    ]
-})
-isosceles_tp <- sapply(isosceles_tp_list, length)
-isosceles_fp <- sapply(isosceles_fp_list, length)
 ```
 
 Prepare IsoQuant intron position data:
@@ -184,24 +191,18 @@ isoquant_intron_list <- lapply(sample_ids, function(sample_id) {
     splicing_df <- Isosceles:::prepare_reference_annotations(file.path(
         result_dir, glue("isoquant_{sample_id}_insufficient_extended_annotations.gtf")
     ))$splicing_df
+    tpm_df <- read_delim(file.path(
+        result_dir, glue("isoquant_{sample_id}_insufficient_transcript_tpm.tsv")
+    ))
+    tpm_df <- tpm_df[tpm_df$TPM > 0,]
+    expressed_tx_ids <- tpm_df[, 1, drop = TRUE]
+    tpm_selector <- sapply(strsplit(splicing_df$compatible_tx, ","),
+                           function(x) {any(x %in% expressed_tx_ids)})
+    splicing_df <- splicing_df[tpm_selector,]
     intron_positions <- splicing_df$intron_positions
     return(intron_positions)
 })
 names(isoquant_intron_list) <- paste0("IsoQuant.", sample_ids)
-isoquant_tp_list <- lapply(isoquant_intron_list, function(intron_positions) {
-    intron_positions[
-        (intron_positions %in% correct_intron_positions) &
-            (!intron_positions %in% insufficient_intron_positions)
-    ]
-})
-isoquant_fp_list <- lapply(isoquant_intron_list, function(intron_positions) {
-    intron_positions[
-        (!intron_positions %in% correct_intron_positions) &
-            (!intron_positions %in% insufficient_intron_positions)
-    ]
-})
-isoquant_tp <- sapply(isoquant_tp_list, length)
-isoquant_fp <- sapply(isoquant_fp_list, length)
 ```
 
 Prepare bambu intron position data:
@@ -210,62 +211,66 @@ bambu_intron_list <- lapply(sample_ids, function(sample_id) {
     splicing_df <- Isosceles:::prepare_reference_annotations(file.path(
         result_dir, glue("bambu_{sample_id}_insufficient_extended_annotations.gtf")
     ))$splicing_df
+    count_df <- read_delim(file.path(
+        result_dir, glue("bambu_{sample_id}_insufficient_counts_transcript.txt")
+    ))
+    count_df <- count_df[count_df[, 3, drop = TRUE] > 0,]
+    expressed_tx_ids <- count_df$TXNAME
+    count_selector <- sapply(strsplit(splicing_df$compatible_tx, ","),
+                             function(x) {any(x %in% expressed_tx_ids)})
+    splicing_df <- splicing_df[count_selector,]
     intron_positions <- splicing_df$intron_positions
     return(intron_positions)
 })
 names(bambu_intron_list) <- paste0("bambu.", sample_ids)
-bambu_tp_list <- lapply(bambu_intron_list, function(intron_positions) {
-    intron_positions[
-        (intron_positions %in% correct_intron_positions) &
-            (!intron_positions %in% insufficient_intron_positions)
-    ]
-})
-bambu_fp_list <- lapply(bambu_intron_list, function(intron_positions) {
-    intron_positions[
-        (!intron_positions %in% correct_intron_positions) &
-            (!intron_positions %in% insufficient_intron_positions)
-    ]
-})
-bambu_tp <- sapply(bambu_tp_list, length)
-bambu_fp <- sapply(bambu_fp_list, length)
 ```
 
-Plot numbers of detected transcripts:
+Plot transcript detection metrics:
 ```{r, message = FALSE, warning = FALSE}
 tools <- c("Isosceles", "IsoQuant", "Bambu")
 plot_df <- data.frame(
-    tool = rep(tools, each = 2),
-    status = rep(c("TP", "FP"), 3),
+    tool = rep(tools, each = 3),
+    metric = rep(c("Precision", "Recall", "F1"), 3),
     value = c(
-        isosceles_tp["Isosceles.cdna"],
-        isosceles_fp["Isosceles.cdna"],
-        isoquant_tp["IsoQuant.cdna"],
-        isoquant_fp["IsoQuant.cdna"],
-        bambu_tp["bambu.cdna"],
-        bambu_fp["bambu.cdna"]
+        precision(isosceles_intron_list[["Isosceles.cdna"]]),
+        recall(isosceles_intron_list[["Isosceles.cdna"]]),
+        f1_score(isosceles_intron_list[["Isosceles.cdna"]]),
+        precision(isoquant_intron_list[["IsoQuant.cdna"]]),
+        recall(isoquant_intron_list[["IsoQuant.cdna"]]),
+        f1_score(isoquant_intron_list[["IsoQuant.cdna"]]),
+        precision(bambu_intron_list[["bambu.cdna"]]),
+        recall(bambu_intron_list[["bambu.cdna"]]),
+        f1_score(bambu_intron_list[["bambu.cdna"]])
     )
 )
-plot_df$tool <- fct_rev(fct_reorder(plot_df$tool, plot_df$value))
-plot_df$status <- factor(plot_df$status, levels = c("TP", "FP"))
-ggplot(plot_df, mapping = aes(x = tool,
-                              y = value,
-                              fill = status)) +
-    geom_col(position = position_dodge(), color = "black", width = 0.5) +
-    scale_fill_manual(values = c(TP = "grey",
-                                 FP = "darkred")) +
-    lims(y = c(0, 8)) +
-    labs(
-        x = "",
-        y = "Number of detected transcripts"
+plot_df$tool <- fct_reorder(plot_df$tool, plot_df$value)
+plot_df$metric <- fct_rev(factor(
+    plot_df$metric, levels = c("Precision", "Recall", "F1")
+))
+ggplot(plot_df, mapping = aes(x = value,
+                              y = metric,
+                              fill = tool)) +
+    geom_col(position = position_dodge2()) +
+    geom_text(
+        aes(label = format(round(value, 2), nsmall = 2)),
+        position = position_dodge2(width = .9),
+        size = 3,
+        hjust = -0.3
     ) +
+    lims(x = c(0, 1.1)) +
+    scale_fill_manual(values = c(Isosceles = "black",
+                                 Bambu = "mediumseagreen",
+                                 IsoQuant = "gold")) +
     theme_classic() +
     theme(legend.title = element_blank(),
           legend.position = "top",
-          legend.key.size = unit(0.4, "cm"),
-          aspect.ratio = 1,
-          axis.text = element_text(size = 8),
+          legend.key.size = unit(0.3, "cm"),
+          legend.text = element_text(size = 7),
+          axis.text = element_text(size = 7),
           axis.title.x = element_blank(),
-          axis.title.y = element_text(size = 8))
+          axis.title.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank())
 ```
 
 # Session Info
