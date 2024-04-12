@@ -7,15 +7,23 @@
 read_analysis.py transcriptome -t {threads} --no_intron_retention -i {fastq_file} -rt {transcriptome_fasta_file} -rg  {genome_fasta_file} -o {read_model_file_prefix}
 ```
 
-### Simulating ONT reads
+### Simulating Nanopore reads
 ```bash
 simulator.py transcriptome -t {threads} --fastq --no_model_ir -b albacore -r cDNA_1D -n 100000000 -c {read_model_file_prefix} -rt {transcriptome_fasta_file} -e {expression_values_tabular_file} -o {simulated_reads_file_prefix}
 cat {simulated_reads_file_prefix}_aligned_reads.fastq | head -n 48000000 | gzip -c > {fastq_file}
 ```
 
 ## minimap2
+
+### Aligning Nanopore reads
 ```bash
 minimap2 -t {threads} -ax splice --secondary=no --junc-bed {junction_bed_file} --junc-bonus 15 {genome_fasta_file} {fastq_file} | samtools sort -o {bam_file}
+samtools index {bam_file}
+```
+
+### Aligning Pacbio reads
+```bash
+minimap2 -t {threads} -ax splice:hq --secondary=no --junc-bed {junction_bed_file} --junc-bonus 15 {genome_fasta_file} {fastq_file} | samtools sort -o {bam_file}
 samtools index {bam_file}
 ```
 
