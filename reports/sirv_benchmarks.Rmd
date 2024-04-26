@@ -168,6 +168,25 @@ f1_score <- function(intron_positions) {
     FN <- P - TP
     return(2 * TP / (2*TP + FP + FN))
 }
+classify_tx <- function(intron_positions) {
+    return(c(
+        TP = sum(intron_positions %in% correct_intron_positions),
+        TP_KNOWN = sum(intron_positions %in% insufficient_intron_positions),
+        TP_NOVEL = sum(
+            (intron_positions %in% correct_intron_positions) &
+                !(intron_positions %in% insufficient_intron_positions)
+        ),
+        FN = length(setdiff(correct_intron_positions, intron_positions)),
+        FN_KNOWN = length(setdiff(
+            insufficient_intron_positions, intron_positions
+        )),
+        FN_NOVEL = length(setdiff(
+            setdiff(correct_intron_positions, insufficient_intron_positions),
+            intron_positions
+        )),
+        FP = sum(!intron_positions %in% correct_intron_positions)
+    ))
+}
 ```
 
 Prepare Isosceles intron position data:
@@ -271,6 +290,49 @@ ggplot(plot_df, mapping = aes(x = value,
           axis.title.y = element_blank(),
           axis.text.x = element_blank(),
           axis.ticks.x = element_blank())
+```
+
+Transcript detection results:
+```{r, message = FALSE, warning = FALSE}
+classification_df <- data.frame(
+    Isosceles = classify_tx(isosceles_intron_list[["Isosceles.cdna"]]),
+    IsoQuant = classify_tx(isoquant_intron_list[["IsoQuant.cdna"]]),
+    Bambu = classify_tx(bambu_intron_list[["bambu.cdna"]])
+)
+classification_df
+```
+
+Plot transcript detection results:
+```{r, message = FALSE, warning = FALSE}
+plot_df <- classification_df
+plot_df$metric <- rownames(plot_df)
+plot_df <- plot_df %>%
+    pivot_longer(-metric, names_to = "tool", values_to = "value") %>%
+    filter(metric %in% c("TP_KNOWN", "TP_NOVEL", "FP", "FN_KNOWN", "FN_NOVEL"))
+plot_df$metric <- fct_rev(factor(
+    plot_df$metric,
+    levels = c(c("TP_KNOWN", "TP_NOVEL", "FN_KNOWN", "FN_NOVEL", "FP"))
+))
+plot_df$tool <- paste0(
+    plot_df$tool, " ", ifelse(grepl("^TP", plot_df$metric), "TP", "FP/FN")
+)
+ggplot(plot_df, mapping = aes(x = value,
+                              y = tool,
+                              fill = metric)) +
+    geom_col() +
+    scale_fill_manual(values = c(TP_KNOWN = "darkgreen",
+                                 TP_NOVEL = "mediumseagreen",
+                                 FN_KNOWN = "royalblue4",
+                                 FN_NOVEL = "cornflowerblue",
+                                 FP = "darkred")) +
+    theme_classic() +
+    theme(legend.title = element_blank(),
+          legend.position = "top",
+          legend.key.size = unit(0.3, "cm"),
+          legend.text = element_text(size = 5),
+          axis.text = element_text(size = 7),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank())
 ```
 
 # Session Info
