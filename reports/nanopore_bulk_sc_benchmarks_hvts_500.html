@@ -2357,15 +2357,34 @@ barplots</a></li>
 <span id="cb51-11"><a href="#cb51-11" aria-hidden="true" tabindex="-1"></a>        <span class="at">mean_rel_diff =</span> <span class="fu">get_mean_rel_diff</span>(tpm_bulk, tpm_pseudobulk)</span>
 <span id="cb51-12"><a href="#cb51-12" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
 <span id="cb51-13"><a href="#cb51-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ungroup</span>()</span>
-<span id="cb51-14"><a href="#cb51-14" aria-hidden="true" tabindex="-1"></a>plot_df <span class="ot">&lt;-</span> plot_df <span class="sc">%&gt;%</span></span>
-<span id="cb51-15"><a href="#cb51-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(tool, status) <span class="sc">%&gt;%</span></span>
+<span id="cb51-14"><a href="#cb51-14" aria-hidden="true" tabindex="-1"></a>test_values_df <span class="ot">&lt;-</span> plot_df <span class="sc">%&gt;%</span></span>
+<span id="cb51-15"><a href="#cb51-15" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(tool, sample_pseudobulk, status) <span class="sc">%&gt;%</span></span>
 <span id="cb51-16"><a href="#cb51-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
-<span id="cb51-17"><a href="#cb51-17" aria-hidden="true" tabindex="-1"></a>        <span class="at">corr_spearman_avg =</span> <span class="fu">mean</span>(corr_spearman),</span>
-<span id="cb51-18"><a href="#cb51-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">corr_spearman_se =</span> <span class="fu">sd</span>(corr_spearman) <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="fu">n</span>()),</span>
-<span id="cb51-19"><a href="#cb51-19" aria-hidden="true" tabindex="-1"></a>        <span class="at">mean_rel_diff_avg =</span> <span class="fu">mean</span>(mean_rel_diff),</span>
-<span id="cb51-20"><a href="#cb51-20" aria-hidden="true" tabindex="-1"></a>        <span class="at">mean_rel_diff_se =</span> <span class="fu">sd</span>(mean_rel_diff) <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="fu">n</span>())</span>
-<span id="cb51-21"><a href="#cb51-21" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
-<span id="cb51-22"><a href="#cb51-22" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ungroup</span>()</span></code></pre></div>
+<span id="cb51-17"><a href="#cb51-17" aria-hidden="true" tabindex="-1"></a>        <span class="at">corr_spearman =</span> <span class="fu">mean</span>(corr_spearman),</span>
+<span id="cb51-18"><a href="#cb51-18" aria-hidden="true" tabindex="-1"></a>        <span class="at">mean_rel_diff =</span> <span class="fu">mean</span>(mean_rel_diff)</span>
+<span id="cb51-19"><a href="#cb51-19" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
+<span id="cb51-20"><a href="#cb51-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ungroup</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb51-21"><a href="#cb51-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(</span>
+<span id="cb51-22"><a href="#cb51-22" aria-hidden="true" tabindex="-1"></a>        <span class="at">status =</span> <span class="fu">gsub</span>(<span class="st">&quot;Correct vs &quot;</span>, <span class="st">&quot;&quot;</span>, status)</span>
+<span id="cb51-23"><a href="#cb51-23" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
+<span id="cb51-24"><a href="#cb51-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">pivot_wider</span>(<span class="at">id_cols =</span> <span class="fu">c</span>(tool, sample_pseudobulk),</span>
+<span id="cb51-25"><a href="#cb51-25" aria-hidden="true" tabindex="-1"></a>                <span class="at">names_from =</span> status,</span>
+<span id="cb51-26"><a href="#cb51-26" aria-hidden="true" tabindex="-1"></a>                <span class="at">values_from =</span> <span class="fu">c</span>(corr_spearman, mean_rel_diff)) <span class="sc">%&gt;%</span></span>
+<span id="cb51-27"><a href="#cb51-27" aria-hidden="true" tabindex="-1"></a>    <span class="fu">transmute</span>(</span>
+<span id="cb51-28"><a href="#cb51-28" aria-hidden="true" tabindex="-1"></a>        <span class="at">tool =</span> tool,</span>
+<span id="cb51-29"><a href="#cb51-29" aria-hidden="true" tabindex="-1"></a>        <span class="at">sample_pseudobulk =</span> sample_pseudobulk,</span>
+<span id="cb51-30"><a href="#cb51-30" aria-hidden="true" tabindex="-1"></a>        <span class="at">corr_spearman =</span> <span class="fu">abs</span>(corr_spearman_Correct <span class="sc">-</span> corr_spearman_Decoy),</span>
+<span id="cb51-31"><a href="#cb51-31" aria-hidden="true" tabindex="-1"></a>        <span class="at">mean_rel_diff =</span> <span class="fu">abs</span>(mean_rel_diff_Correct <span class="sc">-</span> mean_rel_diff_Decoy)</span>
+<span id="cb51-32"><a href="#cb51-32" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb51-33"><a href="#cb51-33" aria-hidden="true" tabindex="-1"></a>plot_df <span class="ot">&lt;-</span> plot_df <span class="sc">%&gt;%</span></span>
+<span id="cb51-34"><a href="#cb51-34" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(tool, status) <span class="sc">%&gt;%</span></span>
+<span id="cb51-35"><a href="#cb51-35" aria-hidden="true" tabindex="-1"></a>    <span class="fu">summarise</span>(</span>
+<span id="cb51-36"><a href="#cb51-36" aria-hidden="true" tabindex="-1"></a>        <span class="at">corr_spearman_avg =</span> <span class="fu">mean</span>(corr_spearman),</span>
+<span id="cb51-37"><a href="#cb51-37" aria-hidden="true" tabindex="-1"></a>        <span class="at">corr_spearman_se =</span> <span class="fu">sd</span>(corr_spearman) <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="fu">n</span>()),</span>
+<span id="cb51-38"><a href="#cb51-38" aria-hidden="true" tabindex="-1"></a>        <span class="at">mean_rel_diff_avg =</span> <span class="fu">mean</span>(mean_rel_diff),</span>
+<span id="cb51-39"><a href="#cb51-39" aria-hidden="true" tabindex="-1"></a>        <span class="at">mean_rel_diff_se =</span> <span class="fu">sd</span>(mean_rel_diff) <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="fu">n</span>())</span>
+<span id="cb51-40"><a href="#cb51-40" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
+<span id="cb51-41"><a href="#cb51-41" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ungroup</span>()</span></code></pre></div>
 <p>Summary barplot (Spearman correlation):</p>
 <div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb52-1"><a href="#cb52-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(plot_df, <span class="at">mapping =</span> <span class="fu">aes</span>(<span class="at">x =</span> tool,</span>
 <span id="cb52-2"><a href="#cb52-2" aria-hidden="true" tabindex="-1"></a>                              <span class="at">y =</span> corr_spearman_avg,</span>
@@ -2459,7 +2478,12 @@ barplots</a></li>
 <span id="cb54-42"><a href="#cb54-42" aria-hidden="true" tabindex="-1"></a>diff_df<span class="sc">$</span>tool <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
 <span id="cb54-43"><a href="#cb54-43" aria-hidden="true" tabindex="-1"></a>diff_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">t</span>(diff_df))</span>
 <span id="cb54-44"><a href="#cb54-44" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(diff_df, <span class="fu">file.path</span>(csv_dir, <span class="fu">glue</span>(<span class="st">&quot;data_{top_n_hvts}_hvts.csv&quot;</span>)))</span>
-<span id="cb54-45"><a href="#cb54-45" aria-hidden="true" tabindex="-1"></a>diff_df</span></code></pre></div>
+<span id="cb54-45"><a href="#cb54-45" aria-hidden="true" tabindex="-1"></a><span class="fu">write.csv</span>(</span>
+<span id="cb54-46"><a href="#cb54-46" aria-hidden="true" tabindex="-1"></a>    test_values_df,</span>
+<span id="cb54-47"><a href="#cb54-47" aria-hidden="true" tabindex="-1"></a>    <span class="fu">file.path</span>(csv_dir,<span class="fu">glue</span>(<span class="st">&quot;test_values_{top_n_hvts}_hvts.csv&quot;</span>)),</span>
+<span id="cb54-48"><a href="#cb54-48" aria-hidden="true" tabindex="-1"></a>    <span class="at">row.names =</span> <span class="cn">FALSE</span></span>
+<span id="cb54-49"><a href="#cb54-49" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb54-50"><a href="#cb54-50" aria-hidden="true" tabindex="-1"></a>diff_df</span></code></pre></div>
 <div data-pagedtable="false">
 <script data-pagedtable-source type="application/json">
 {"columns":[{"label":[""],"name":["_rn_"],"type":[""],"align":["left"]},{"label":["Isosceles"],"name":[1],"type":["dbl"],"align":["right"]},{"label":["IsoQuant"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["FLAMES"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["Sicelore"],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"0.4381894","2":"0.3476372","3":"0.1971204","4":"0.3316568","_rn_":"corr_spearman"},{"1":"0.4809064","2":"0.3931848","3":"0.2526969","4":"0.3492641","_rn_":"corr_spearman_upper_ci_95"},{"1":"0.3954724","2":"0.3020897","3":"0.1415440","4":"0.3140495","_rn_":"corr_spearman_lower_ci_95"},{"1":"0.4740386","2":"0.3858619","3":"0.2437616","4":"0.3464333","_rn_":"corr_spearman_upper_ci_90"},{"1":"0.4023401","2":"0.3094125","3":"0.1504792","4":"0.3168803","_rn_":"corr_spearman_lower_ci_90"},{"1":"0.4598634","2":"0.3707474","3":"0.2253191","4":"0.3405905","_rn_":"corr_spearman_upper_ci_68"},{"1":"0.4165154","2":"0.3245270","3":"0.1689217","4":"0.3227231","_rn_":"corr_spearman_lower_ci_68"},{"1":"0.3912432","2":"0.2212302","3":"0.3093107","4":"0.3139427","_rn_":"mean_rel_diff"},{"1":"0.5027675","2":"0.2620170","3":"0.3790023","4":"0.3656063","_rn_":"mean_rel_diff_upper_ci_95"},{"1":"0.2797189","2":"0.1804434","3":"0.2396190","4":"0.2622792","_rn_":"mean_rel_diff_lower_ci_95"},{"1":"0.4848374","2":"0.2554596","3":"0.3677978","4":"0.3573001","_rn_":"mean_rel_diff_upper_ci_90"},{"1":"0.2976490","2":"0.1870009","3":"0.2508236","4":"0.2705853","_rn_":"mean_rel_diff_lower_ci_90"},{"1":"0.4478291","2":"0.2419249","3":"0.3446712","4":"0.3401561","_rn_":"mean_rel_diff_upper_ci_68"},{"1":"0.3346573","2":"0.2005356","3":"0.2739501","4":"0.2877294","_rn_":"mean_rel_diff_lower_ci_68"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[21],"max":[21]},"pages":{}}}

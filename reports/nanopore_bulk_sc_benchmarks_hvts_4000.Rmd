@@ -722,6 +722,25 @@ plot_df <- plot_df %>%
         mean_rel_diff = get_mean_rel_diff(tpm_bulk, tpm_pseudobulk)
     ) %>%
     ungroup()
+test_values_df <- plot_df %>%
+    group_by(tool, sample_pseudobulk, status) %>%
+    summarise(
+        corr_spearman = mean(corr_spearman),
+        mean_rel_diff = mean(mean_rel_diff)
+    ) %>%
+    ungroup() %>%
+    mutate(
+        status = gsub("Correct vs ", "", status)
+    ) %>%
+    pivot_wider(id_cols = c(tool, sample_pseudobulk),
+                names_from = status,
+                values_from = c(corr_spearman, mean_rel_diff)) %>%
+    transmute(
+        tool = tool,
+        sample_pseudobulk = sample_pseudobulk,
+        corr_spearman = abs(corr_spearman_Correct - corr_spearman_Decoy),
+        mean_rel_diff = abs(mean_rel_diff_Correct - mean_rel_diff_Decoy)
+    )
 plot_df <- plot_df %>%
     group_by(tool, status) %>%
     summarise(
@@ -831,6 +850,11 @@ rownames(diff_df) <- diff_df$tool
 diff_df$tool <- NULL
 diff_df <- as.data.frame(t(diff_df))
 write.csv(diff_df, file.path(csv_dir, glue("data_{top_n_hvts}_hvts.csv")))
+write.csv(
+    test_values_df,
+    file.path(csv_dir,glue("test_values_{top_n_hvts}_hvts.csv")),
+    row.names = FALSE
+)
 diff_df
 ```
 

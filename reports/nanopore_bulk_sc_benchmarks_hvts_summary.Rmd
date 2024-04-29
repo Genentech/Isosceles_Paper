@@ -44,9 +44,73 @@ plot_df_list <- lapply(top_n_hvts_values, function(top_n_hvts) {
     return(plot_df)
 })
 plot_df <- do.call(rbind, plot_df_list)
+cor_spearman_fc_df <- plot_df %>%
+    select("tool", "top_n_hvts", "corr_spearman") %>%
+    pivot_wider(names_from = tool, values_from = corr_spearman) %>%
+    transmute(
+        IsoQuant = Isosceles / IsoQuant,
+        FLAMES = Isosceles / FLAMES,
+        Sicelore = Isosceles / Sicelore
+    )
+cor_spearman_fc_df <- data.frame(
+    median_fc = apply(cor_spearman_fc_df, 2, median),
+    max_fc = apply(cor_spearman_fc_df, 2, max)
+)
+mean_rel_diff_fc_df <- plot_df %>%
+    select("tool", "top_n_hvts", "mean_rel_diff") %>%
+    pivot_wider(names_from = tool, values_from = mean_rel_diff) %>%
+    transmute(
+        IsoQuant = Isosceles / IsoQuant,
+        FLAMES = Isosceles / FLAMES,
+        Sicelore = Isosceles / Sicelore
+    )
+mean_rel_diff_fc_df <- data.frame(
+    median_fc = apply(mean_rel_diff_fc_df, 2, median),
+    max_fc = apply(mean_rel_diff_fc_df, 2, max)
+)
+test_df_list <- lapply(top_n_hvts_values, function(top_n_hvts) {
+    test_df <- read.csv(file.path(
+        csv_dir, glue("test_values_{top_n_hvts}_hvts.csv")
+    ))
+    test_df$top_n_hvts <- top_n_hvts
+    return(test_df)
+})
+test_df <- do.call(rbind, test_df_list)
+corr_spearman_isosceles <- filter(test_df, tool == "Isosceles") %>%
+    pull(corr_spearman)
+mean_rel_diff_isosceles <- filter(test_df, tool == "Isosceles") %>%
+    pull(mean_rel_diff)
+wilcox_pvalue <- function(x, y) {
+    wilcox.test(x, y, paired = TRUE)$p.value
+}
+test_df <- test_df %>%
+    filter(tool != "Isosceles") %>%
+    group_by(tool) %>%
+    summarise(
+        corr_spearman_pvalue = wilcox_pvalue(corr_spearman,
+                                             corr_spearman_isosceles),
+        mean_rel_diff_pvalue = wilcox_pvalue(mean_rel_diff,
+                                             mean_rel_diff_isosceles)
+    ) %>%
+    as.data.frame()
+rownames(test_df) <- test_df$tool
+test_df$tool <- NULL
+test_df <- test_df[c("IsoQuant", "FLAMES", "Sicelore"),]
+cor_spearman_fc_df$pvalue <- test_df$corr_spearman_pvalue
+mean_rel_diff_fc_df$pvalue <- test_df$mean_rel_diff_pvalue
 ```
 
 # Results
+
+Matched - decoy fold-change statistics (Spearman correlation):
+```{r, message = FALSE, warning = FALSE}
+cor_spearman_fc_df
+```
+
+Matched - decoy fold-change statistics (mean relative difference):
+```{r, message = FALSE, warning = FALSE}
+mean_rel_diff_fc_df
+```
 
 Matched - decoy plot (Spearman correlation, standard error interval):
 ```{r, message = FALSE, warning = FALSE}
