@@ -23,6 +23,7 @@ library(viridis)
 Global parameters:
 ```{r, message = FALSE, warning = FALSE}
 result_dir <- file.path("..", "nanopore_sc_analysis", "report_data")
+sample_ids <- c("SK-OV-3", "IGROV-1", "COV504")
 min_tpm <- 1
 min_cor_spearman <- 0.6
 max_cor_spearman <- 0.9
@@ -88,7 +89,8 @@ create_scatterplot_paired <- function(plot_df) {
         theme_bw() +
         theme(aspect.ratio = 1,
               axis.title.x = element_blank(),
-              axis.title.y = element_blank())
+              axis.title.y = element_blank(),
+              strip.text = element_text(size = 7))
     return(scatter_plot)
 }
 create_scatterplot_combined <- function(plot_df) {
@@ -153,7 +155,7 @@ se_sicelore <- readRDS(file.path(
     result_dir, "isosceles_se_pseudobulk_transcript.rds"
 ))
 se_sicelore <- se_sicelore[, 1:3]
-colnames(se_sicelore) <- paste0("S", colnames(se_sicelore))
+colnames(se_sicelore) <- glue("{sample_ids} (Sicelore)")
 tpm_sicelore <- assay(se_sicelore, "tpm")
 tpm_sicelore <- tpm_sicelore[
     !(rownames(tpm_sicelore) %in% mt_transcripts_isosceles),
@@ -169,7 +171,7 @@ se_wf <- readRDS(file.path(
     result_dir, "isosceles_wf_se_pseudobulk_transcript.rds"
 ))
 se_wf <- se_wf[, 1:3]
-colnames(se_wf) <- paste0("W", colnames(se_wf))
+colnames(se_wf) <- glue("{sample_ids} (wf-single-cell)")
 tpm_wf <- assay(se_wf, "tpm")
 tpm_wf <- tpm_wf[
     !(rownames(tpm_wf) %in% mt_transcripts_isosceles),
@@ -212,7 +214,7 @@ pheatmap(
     cor_spearman,
     color = heatmap_palette(100, direction = heatmap_palette_direction),
     breaks = seq(min_cor_spearman, max_cor_spearman, length.out = 101),
-    cluster_rows = FALSE, cluster_cols = FALSE
+    cluster_rows = FALSE, cluster_cols = FALSE, fontsize = 8
 )
 ```
 
