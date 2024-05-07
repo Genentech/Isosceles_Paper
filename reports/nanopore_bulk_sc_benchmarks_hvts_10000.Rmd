@@ -1,0 +1,865 @@
+---
+title: "Nanopore bulk RNA-Seq and scRNA-Seq data benchmarks (top 10000 highly variable transcripts)"
+output:
+  html_document:
+    highlight: pygments
+    df_print: paged
+    toc: true
+    toc_depth: 2
+---
+
+# Preparing the data
+
+Load the required packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(glue)
+library(scales)
+library(Matrix)
+library(scater)
+library(scran)
+library(pheatmap)
+library(viridis)
+```
+
+Global parameters:
+```{r, message = FALSE, warning = FALSE}
+csv_dir <- "nanopore_bulk_sc_benchmarks_hvts_data"
+dir.create(csv_dir, recursive = TRUE)
+bulk_dir <- file.path("..", "nanopore_bulk_analysis", "report_data")
+sc_dir <- file.path("..", "nanopore_sc_analysis", "report_data")
+souporcell_file <- file.path("..", "illumina_sc_analysis", "data",
+                             "souporcell_clusters.tsv")
+bulk_sample_ids <- c("LIB5432309_SAM24385452", "LIB5432310_SAM24385453",
+                     "LIB5432311_SAM24385454", "LIB5432312_SAM24385455",
+                     "LIB5432313_SAM24385456", "LIB5432314_SAM24385457",
+                     "LIB5432315_SAM24385458", "LIB5432316_SAM24385459")
+bulk_sample_names <- c("OVMANA", "OVKATE", "OVTOKO", "SK-OV-3", "COV362",
+                       "COV504", "IGROV-1")
+bulk_sample_order <- c("SK-OV-3", "IGROV-1", "COV504", "OVMANA", "OVKATE",
+                       "OVTOKO", "COV362")
+cell_min_txs <- 500
+top_n_hvts <- 10000
+min_cor_spearman <- 0.3
+max_cor_spearman <- 0.9
+min_mean_rel_diff <- 0.5
+max_mean_rel_diff <- 1.1
+heatmap_palette <- cividis
+heatmap_palette_direction <- 1
+scatterplot_df_list <- list()
+```
+
+Helper functions:
+```{r, message = FALSE, warning = FALSE}
+fill_missing_matrix <- function(x, all_rownames) {
+    missing_rownames <- setdiff(all_rownames, rownames(x))
+    missing_matrix <- matrix(
+        0, nrow = length(missing_rownames), ncol = ncol(x)
+    )
+    rownames(missing_matrix) <- missing_rownames
+    full_matrix <- rbind(x, missing_matrix)
+    full_matrix <- full_matrix[all_rownames,]
+    return(full_matrix)
+}
+get_hvts <- function(count_matrix) {
+    sce <- SingleCellExperiment(assays = list(counts = count_matrix))
+    sce <- sce[, colSums(count_matrix > 0) >= cell_min_txs]
+    sce <- computeLibraryFactors(sce)
+    sce <- logNormCounts(sce)
+    dec <- modelGeneVar(sce)
+    top_hvts <- getTopHVGs(dec, n = top_n_hvts)
+    return(top_hvts)
+}
+get_mean_rel_diff <- function(x, y) {
+    selector <- (x != 0) & (y != 0)
+    x <- x[selector]
+    y <- y[selector]
+    mean(abs(x - y) / ((x + y) / 2))
+}
+get_mean_rel_diff_matrix <- function(x, y) {
+    apply(y, 2, function(y_values) {
+        apply(x, 2, function(x_values) {
+            selector <- (y_values != 0) & (x_values != 0)
+            y_values <- y_values[selector]
+            x_values <- x_values[selector]
+            mean(abs(x_values - y_values) / ((x_values + y_values) / 2))
+        })
+    })    
+}
+prepare_scatterplot_data <- function(tpm_matrix_bulk,
+                                     tpm_matrix_pseudobulk) {
+    tpm_bulk_df <- as.data.frame(tpm_matrix_bulk[, 1:3])
+    bulk_levels <- colnames(tpm_bulk_df)
+    tpm_bulk_df$transcript_id <- rownames(tpm_bulk_df)
+    rownames(tpm_bulk_df) <- NULL
+    tpm_bulk_df <- tpm_bulk_df %>%
+        gather(-transcript_id, key = "sample_bulk", value = "tpm_bulk")
+    tpm_bulk_df$sample_bulk <- factor(
+        tpm_bulk_df$sample_bulk, levels = bulk_levels
+    )
+    tpm_pseudobulk_df <- as.data.frame(tpm_matrix_pseudobulk)
+    pseudobulk_levels <- colnames(tpm_pseudobulk_df)
+    tpm_pseudobulk_df$transcript_id <- rownames(tpm_pseudobulk_df)
+    rownames(tpm_pseudobulk_df) <- NULL
+    tpm_pseudobulk_df <- tpm_pseudobulk_df %>%
+        gather(-transcript_id, key = "sample_pseudobulk",
+               value = "tpm_pseudobulk")
+    tpm_pseudobulk_df$sample_pseudobulk <- factor(
+        tpm_pseudobulk_df$sample_pseudobulk, levels = pseudobulk_levels
+    )
+    tpm_df <- left_join(tpm_bulk_df, tpm_pseudobulk_df)
+    tpm_df$status <- ifelse(
+        as.numeric(tpm_df$sample_bulk) ==
+            as.numeric(tpm_df$sample_pseudobulk),
+        "Correct vs Correct", "Correct vs Decoy"
+    )
+    tpm_df$status <- factor(
+        tpm_df$status,
+        levels = c("Correct vs Correct", "Correct vs Decoy")
+    )
+    return(tpm_df)
+}
+create_scatterplot_paired <- function(plot_df) {
+    plot_df$tpm_bulk[plot_df$tpm_bulk < 0.1] <- 0.1
+    plot_df$tpm_pseudobulk[plot_df$tpm_pseudobulk < 0.1] <- 0.1
+    scatter_plot <- ggplot(plot_df, mapping = aes(x = tpm_bulk,
+                                                  y = tpm_pseudobulk)) +
+        geom_point(alpha = 0.35, size = 0.05) +
+        geom_abline(intercept = 0, slope = 1,
+                    lty = 3, color = "red") +
+        facet_grid(rows = vars(sample_pseudobulk),
+                   cols = vars(sample_bulk)) +
+        scale_x_log10(labels = trans_format("log10", math_format(10^.x))) +
+        scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+        coord_cartesian(xlim = c(0.1, 10^5),
+                        ylim = c(0.1, 10^5),
+                        clip = "off") +
+        annotation_logticks(outside = TRUE,
+                            size = 0.25,
+                            short = unit(0.05, "cm"),
+                            mid = unit(0.1, "cm"),
+                            long = unit(0.15, "cm")) +
+        theme_bw() +
+        theme(aspect.ratio = 1,
+              axis.title.x = element_blank(),
+              axis.title.y = element_blank())
+    return(scatter_plot)
+}
+create_scatterplot_combined <- function(plot_df) {
+    plot_df$tpm_bulk[plot_df$tpm_bulk < 0.1] <- 0.1
+    plot_df$tpm_pseudobulk[plot_df$tpm_pseudobulk < 0.1] <- 0.1
+    scatter_plot <- ggplot(plot_df, mapping = aes(x = tpm_bulk,
+                                                  y = tpm_pseudobulk)) +
+        geom_point(alpha = 0.35, size = 0.05) +
+        geom_abline(intercept = 0, slope = 1,
+                    lty = 3, color = "red") +
+        facet_grid(cols = vars(status)) +
+        scale_x_log10(labels = trans_format("log10", math_format(10^.x))) +
+        scale_y_log10(labels = trans_format("log10", math_format(10^.x))) +
+        coord_cartesian(xlim = c(0.1, 10^5),
+                        ylim = c(0.1, 10^5),
+                        clip = "off") +
+        annotation_logticks(outside = TRUE,
+                            size = 0.25,
+                            short = unit(0.05, "cm"),
+                            mid = unit(0.1, "cm"),
+                            long = unit(0.15, "cm")) +
+        theme_bw() +
+        theme(aspect.ratio = 1,
+              axis.title.x = element_blank(),
+              axis.title.y = element_blank())
+    return(scatter_plot)
+}
+```
+
+Prepare mitochondrial transcript blacklist:
+```{r, message = FALSE, warning = FALSE}
+se_transcript_mt <- readRDS(file.path(
+    sc_dir, "isosceles_se_transcript.rds"
+))
+se_transcript_mt <- se_transcript_mt[
+    grepl("^MT:", rowData(se_transcript_mt)$position),
+]
+mt_transcripts_isosceles <- rownames(se_transcript_mt)
+mt_transcripts_ensembl <- rowData(se_transcript_mt)$compatible_tx
+mt_transcripts_isosceles <- c(
+    mt_transcripts_isosceles,
+    c("ISOT-0000-0000-0000-2622:s10197250:e10199150:FA:FL",
+      "ISOT-0000-0000-0000-caeb:s10507850:e10509200:FA:FL",
+      "ISOT-0000-0000-0000-2809:s96617150:e96618250:FA:FL")
+)
+mt_transcripts_ensembl <- c(
+    mt_transcripts_ensembl,
+    c("ENST00000445125", "ENST00000536684", "ENST00000600213")
+)
+```
+
+Prepare Souporcell cluster data:
+```{r, message = FALSE, warning = FALSE}
+souporcell_df <- read.delim(souporcell_file)
+souporcell_barcode <- gsub("-1$", "", souporcell_df$barcode)
+souporcell_cluster <- ifelse(souporcell_df$status == "singlet",
+                             souporcell_df$assignment,
+                             souporcell_df$status)
+souporcell_cluster <- setNames(souporcell_cluster, souporcell_barcode)
+```
+
+# Isosceles bulk-pseudobulk correlation plots
+
+Prepare Isosceles scRNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+se <- readRDS(file.path(
+    sc_dir, "isosceles_se_transcript.rds"
+))
+colnames(se) <- sapply(strsplit(colnames(se), "\\."), "[", 2)
+sc_counts <- assay(se, "counts")
+sc_counts <- sc_counts[
+    !(rownames(sc_counts) %in% mt_transcripts_isosceles),
+]
+cell_labels <- souporcell_cluster[colnames(sc_counts)]
+cell_selector <- cell_labels %in% c("0", "1", "2")
+sc_counts <- sc_counts[, cell_selector]
+```
+
+Prepare Isosceles pseudobulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+se_pseudobulk <- readRDS(file.path(
+    sc_dir, "isosceles_se_pseudobulk_transcript.rds"
+))
+se_pseudobulk <- se_pseudobulk[, 1:3]
+colnames(se_pseudobulk) <- paste0("C", colnames(se_pseudobulk))
+tpm_pseudobulk <- assay(se_pseudobulk, "tpm")
+tpm_pseudobulk <- tpm_pseudobulk[
+    !(rownames(tpm_pseudobulk) %in% mt_transcripts_isosceles),
+]
+tpm_pseudobulk <- t(
+    t(tpm_pseudobulk) / colSums(tpm_pseudobulk) * 1e6
+)
+```
+
+Prepare Isosceles bulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+se_bulk <- readRDS(file.path(
+    bulk_dir, "isosceles_se_transcript.rds"
+))
+tpm_bulk <- assay(se_bulk, "tpm")
+tpm_bulk[, 7] <- (tpm_bulk[, 7] + tpm_bulk[, 8]) / 2
+tpm_bulk <- tpm_bulk[, 1:7]
+colnames(tpm_bulk) <- bulk_sample_names
+tpm_bulk <- tpm_bulk[, bulk_sample_order]
+tpm_bulk <- tpm_bulk[
+    !(rownames(tpm_bulk) %in% mt_transcripts_isosceles),
+]
+tpm_bulk <- t(
+    t(tpm_bulk) / colSums(tpm_bulk) * 1e6
+)
+```
+
+Select top transcripts for further analysis:
+```{r, message = FALSE, warning = FALSE}
+top_transcripts <- get_hvts(sc_counts)
+```
+
+Re-normalize the TPM values:
+```{r, message = FALSE, warning = FALSE}
+tpm_bulk <- tpm_bulk[top_transcripts,]
+tpm_pseudobulk <- tpm_pseudobulk[top_transcripts,]
+tpm_bulk <- t(
+    t(tpm_bulk) / colSums(tpm_bulk) * 1e6
+)
+tpm_pseudobulk <- t(
+    t(tpm_pseudobulk) / colSums(tpm_pseudobulk) * 1e6
+)
+```
+
+Calculate the correlation matrices:
+```{r, message = FALSE, warning = FALSE}
+cor_spearman <- cor(tpm_pseudobulk[top_transcripts,],
+                    tpm_bulk[top_transcripts,],
+                    method = "spearman")
+mean_rel_diff <- get_mean_rel_diff_matrix(
+    tpm_pseudobulk[top_transcripts,],
+    tpm_bulk[top_transcripts,]
+)
+```
+
+Spearman correlation matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(cor_spearman)
+```
+
+Spearman correlation heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    cor_spearman,
+    color = heatmap_palette(100, direction = heatmap_palette_direction),
+    breaks = seq(min_cor_spearman, max_cor_spearman, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+Mean relative difference matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(mean_rel_diff)
+```
+
+Mean relative difference heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    mean_rel_diff,
+    color = heatmap_palette(100, direction = -1),
+    breaks = seq(min_mean_rel_diff, max_mean_rel_diff, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+TPM scatter plots:
+```{r, message = FALSE, warning = FALSE}
+scatterplot_df <- prepare_scatterplot_data(tpm_bulk,
+                                           tpm_pseudobulk)
+scatterplot_df$tool <- "Isosceles"
+scatterplot_df_list[["Isosceles"]] <- scatterplot_df
+create_scatterplot_paired(scatterplot_df)
+create_scatterplot_combined(scatterplot_df)
+```
+
+# IsoQuant bulk-pseudobulk correlation plots
+
+Prepare IsoQuant pseudobulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_sc_df <- read_delim(file.path(
+    sc_dir, "isoquant_transcript_grouped_tpm.tsv"
+))
+isoquant_sc_transcript_ids <- isoquant_sc_df[, 1, drop = TRUE]
+isoquant_sc_counts <- as(as.matrix(isoquant_sc_df[, c(-1)]), "dgCMatrix")
+rownames(isoquant_sc_counts) <- isoquant_sc_transcript_ids
+isoquant_sc_counts <- isoquant_sc_counts[
+    !(rownames(isoquant_sc_counts) %in% mt_transcripts_ensembl),
+]
+cell_labels <- souporcell_cluster[colnames(isoquant_sc_counts)]
+cell_selector <- cell_labels %in% c("0", "1", "2")
+isoquant_sc_counts <- isoquant_sc_counts[, cell_selector]
+cell_labels <- cell_labels[cell_selector]
+isoquant_pseudobulk_tpm <- t(rowsum(t(isoquant_sc_counts), cell_labels))
+colnames(isoquant_pseudobulk_tpm) <- paste0(
+    "C", colnames(isoquant_pseudobulk_tpm)
+)
+isoquant_pseudobulk_tpm <- t(
+    t(isoquant_pseudobulk_tpm) / colSums(isoquant_pseudobulk_tpm) * 1e6
+)
+```
+
+Prepare IsoQuant bulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+isoquant_bulk_list <- lapply(bulk_sample_ids, function(sample_id) {
+    isoquant_df <- read_delim(file.path(
+        bulk_dir, glue("isoquant_{sample_id}_transcript_tpm.tsv")
+    ))
+})
+isoquant_bulk_tx_ids <- unique(unlist(sapply(
+    isoquant_bulk_list, function(df) {df[, 1, drop = TRUE]}
+)))
+isoquant_bulk_tpm <- sapply(isoquant_bulk_list, function(df) {
+    tpm_values <- df$TPM
+    names(tpm_values) <- df[, 1, drop = TRUE]
+    tpm_values <- tpm_values[isoquant_bulk_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(isoquant_bulk_tpm) <- isoquant_bulk_tx_ids
+isoquant_bulk_tpm[, 7] <-
+    (isoquant_bulk_tpm[, 7] + isoquant_bulk_tpm[, 8]) / 2
+isoquant_bulk_tpm <- isoquant_bulk_tpm[, 1:7]
+colnames(isoquant_bulk_tpm) <- bulk_sample_names
+isoquant_bulk_tpm <- isoquant_bulk_tpm[, bulk_sample_order]
+isoquant_bulk_tpm <- fill_missing_matrix(isoquant_bulk_tpm,
+                                         rownames(isoquant_pseudobulk_tpm))
+isoquant_bulk_tpm <- t(
+    t(isoquant_bulk_tpm) / colSums(isoquant_bulk_tpm) * 1e6
+)
+```
+
+Select top transcripts for further analysis:
+```{r, message = FALSE, warning = FALSE}
+top_transcripts <- get_hvts(isoquant_sc_counts)
+```
+
+Re-normalize the TPM values:
+```{r, message = FALSE, warning = FALSE}
+isoquant_bulk_tpm <- isoquant_bulk_tpm[top_transcripts,]
+isoquant_pseudobulk_tpm <- isoquant_pseudobulk_tpm[top_transcripts,]
+isoquant_bulk_tpm <- t(
+    t(isoquant_bulk_tpm) / colSums(isoquant_bulk_tpm) * 1e6
+)
+isoquant_pseudobulk_tpm <- t(
+    t(isoquant_pseudobulk_tpm) / colSums(isoquant_pseudobulk_tpm) * 1e6
+)
+```
+
+Calculate the correlation matrices:
+```{r, message = FALSE, warning = FALSE}
+cor_spearman <- cor(isoquant_pseudobulk_tpm[top_transcripts,],
+                    isoquant_bulk_tpm[top_transcripts,],
+                    method = "spearman")
+mean_rel_diff <- get_mean_rel_diff_matrix(
+    isoquant_pseudobulk_tpm[top_transcripts,],
+    isoquant_bulk_tpm[top_transcripts,]
+)
+```
+
+Spearman correlation matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(cor_spearman)
+```
+
+Spearman correlation heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    cor_spearman,
+    color = heatmap_palette(100, direction = heatmap_palette_direction),
+    breaks = seq(min_cor_spearman, max_cor_spearman, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+Mean relative difference matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(mean_rel_diff)
+```
+
+Mean relative difference heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    mean_rel_diff,
+    color = heatmap_palette(100, direction = -1),
+    breaks = seq(min_mean_rel_diff, max_mean_rel_diff, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+TPM scatter plots:
+```{r, message = FALSE, warning = FALSE}
+scatterplot_df <- prepare_scatterplot_data(isoquant_bulk_tpm,
+                                           isoquant_pseudobulk_tpm)
+scatterplot_df$tool <- "IsoQuant"
+scatterplot_df_list[["IsoQuant"]] <- scatterplot_df
+create_scatterplot_paired(scatterplot_df)
+create_scatterplot_combined(scatterplot_df)
+```
+
+# FLAMES bulk-pseudobulk correlation plots
+
+Prepare FLAMES pseudobulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+flames_sc_df <- read_csv(file.path(
+    sc_dir, "flames_transcript_count.csv.gz"
+))
+flames_sc_df <- flames_sc_df[!grepl("_", flames_sc_df$transcript_id),]
+flames_sc_transcript_ids <- flames_sc_df$transcript_id
+flames_sc_counts <- as(as.matrix(flames_sc_df[, c(-1, -2)]), "dgCMatrix")
+rownames(flames_sc_counts) <- flames_sc_transcript_ids
+flames_sc_counts <- flames_sc_counts[
+    !(rownames(flames_sc_counts) %in% mt_transcripts_ensembl),
+]
+cell_labels <- souporcell_cluster[colnames(flames_sc_counts)]
+cell_selector <- cell_labels %in% c("0", "1", "2")
+flames_sc_counts <- flames_sc_counts[, cell_selector]
+cell_labels <- cell_labels[cell_selector]
+flames_pseudobulk_tpm <- t(rowsum(t(flames_sc_counts), cell_labels))
+colnames(flames_pseudobulk_tpm) <- paste0(
+    "C", colnames(flames_pseudobulk_tpm)
+)
+flames_pseudobulk_tpm <- t(
+    t(flames_pseudobulk_tpm) / colSums(flames_pseudobulk_tpm) * 1e6
+)
+```
+
+Prepare FLAMES bulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+flames_bulk_list <- lapply(bulk_sample_ids, function(sample_id) {
+    flames_df <- read_csv(file.path(
+        bulk_dir, glue("flames_{sample_id}_transcript_count.csv.gz")
+    ))
+    flames_df <- flames_df[!grepl("_", flames_df$transcript_id),]
+    return(flames_df)
+})
+flames_bulk_tx_ids <- unique(unlist(sapply(
+    flames_bulk_list, function(df) {df$transcript_id}
+)))
+flames_bulk_tpm <- sapply(flames_bulk_list, function(df) {
+    tpm_values <- df[, 3, drop = TRUE]
+    names(tpm_values) <- df$transcript_id
+    tpm_values <- tpm_values[flames_bulk_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(flames_bulk_tpm) <- flames_bulk_tx_ids
+flames_bulk_tpm <- t(t(flames_bulk_tpm) / colSums(flames_bulk_tpm) * 1e6)
+flames_bulk_tpm[, 7] <- (flames_bulk_tpm[, 7] + flames_bulk_tpm[, 8]) / 2
+flames_bulk_tpm <- flames_bulk_tpm[, 1:7]
+colnames(flames_bulk_tpm) <- bulk_sample_names
+flames_bulk_tpm <- flames_bulk_tpm[, bulk_sample_order]
+flames_bulk_tpm <- fill_missing_matrix(flames_bulk_tpm,
+                                       rownames(flames_pseudobulk_tpm))
+flames_bulk_tpm <- t(
+    t(flames_bulk_tpm) / colSums(flames_bulk_tpm) * 1e6
+)
+```
+
+Select top transcripts for further analysis:
+```{r, message = FALSE, warning = FALSE}
+top_transcripts <- get_hvts(flames_sc_counts)
+```
+
+Re-normalize the TPM values:
+```{r, message = FALSE, warning = FALSE}
+flames_bulk_tpm <- flames_bulk_tpm[top_transcripts,]
+flames_pseudobulk_tpm <- flames_pseudobulk_tpm[top_transcripts,]
+flames_bulk_tpm <- t(
+    t(flames_bulk_tpm) / colSums(flames_bulk_tpm) * 1e6
+)
+flames_pseudobulk_tpm <- t(
+    t(flames_pseudobulk_tpm) / colSums(flames_pseudobulk_tpm) * 1e6
+)
+```
+
+Calculate the correlation matrices:
+```{r, message = FALSE, warning = FALSE}
+cor_spearman <- cor(flames_pseudobulk_tpm[top_transcripts,],
+                    flames_bulk_tpm[top_transcripts,],
+                    method = "spearman")
+mean_rel_diff <- get_mean_rel_diff_matrix(
+    flames_pseudobulk_tpm[top_transcripts,],
+    flames_bulk_tpm[top_transcripts,]
+)
+```
+
+Spearman correlation matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(cor_spearman)
+```
+
+Spearman correlation heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    cor_spearman,
+    color = heatmap_palette(100, direction = heatmap_palette_direction),
+    breaks = seq(min_cor_spearman, max_cor_spearman, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+Mean relative difference matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(mean_rel_diff)
+```
+
+Mean relative difference heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    mean_rel_diff,
+    color = heatmap_palette(100, direction = -1),
+    breaks = seq(min_mean_rel_diff, max_mean_rel_diff, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+TPM scatter plots:
+```{r, message = FALSE, warning = FALSE}
+scatterplot_df <- prepare_scatterplot_data(flames_bulk_tpm,
+                                           flames_pseudobulk_tpm)
+scatterplot_df$tool <- "FLAMES"
+scatterplot_df_list[["FLAMES"]] <- scatterplot_df
+create_scatterplot_paired(scatterplot_df)
+create_scatterplot_combined(scatterplot_df)
+```
+
+# Sicelore bulk-pseudobulk correlation plots
+
+Prepare Sicelore pseudobulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+sicelore_sc_df <- read_delim(file.path(
+    sc_dir, "sicelore_isomatrix.txt"
+))
+sicelore_sc_df <- sicelore_sc_df[sicelore_sc_df$transcriptId != "undef",]
+sicelore_sc_transcript_ids <- sicelore_sc_df$transcriptId
+sicelore_sc_counts <- as(as.matrix(sicelore_sc_df[, c(-1, -2, -3)]),
+                         "dgCMatrix")
+rownames(sicelore_sc_counts) <- sicelore_sc_transcript_ids
+sicelore_sc_counts <- sicelore_sc_counts[
+    !(rownames(sicelore_sc_counts) %in% mt_transcripts_ensembl),
+]
+cell_labels <- souporcell_cluster[colnames(sicelore_sc_counts)]
+cell_selector <- cell_labels %in% c("0", "1", "2")
+sicelore_sc_counts <- sicelore_sc_counts[, cell_selector]
+cell_labels <- cell_labels[cell_selector]
+sicelore_pseudobulk_tpm <- t(rowsum(t(sicelore_sc_counts), cell_labels))
+colnames(sicelore_pseudobulk_tpm) <- paste0(
+    "C", colnames(sicelore_pseudobulk_tpm)
+)
+sicelore_pseudobulk_tpm <- t(
+    t(sicelore_pseudobulk_tpm) / colSums(sicelore_pseudobulk_tpm) * 1e6
+)
+```
+
+Prepare Sicelore bulk RNA-Seq data:
+```{r, message = FALSE, warning = FALSE}
+sicelore_bulk_list <- lapply(bulk_sample_ids, function(sample_id) {
+    sicelore_df <- read_delim(file.path(
+        bulk_dir, glue("sicelore_{sample_id}_sicelore_isomatrix.txt")
+    ))
+    sicelore_df <- sicelore_df[sicelore_df$transcriptId != "undef",]
+    return(sicelore_df)
+})
+sicelore_bulk_tx_ids <- unique(unlist(sapply(
+    sicelore_bulk_list, function(df) {df$transcriptId}
+)))
+sicelore_bulk_tpm <- sapply(sicelore_bulk_list, function(df) {
+    tpm_values <- df[, 4, drop = TRUE]
+    names(tpm_values) <- df$transcriptId
+    tpm_values <- tpm_values[sicelore_bulk_tx_ids]
+    tpm_values[is.na(tpm_values)] <- 0
+    return(tpm_values)
+})
+rownames(sicelore_bulk_tpm) <- sicelore_bulk_tx_ids
+sicelore_bulk_tpm <- t(
+    t(sicelore_bulk_tpm) / colSums(sicelore_bulk_tpm) * 1e6
+)
+sicelore_bulk_tpm[, 7] <-
+    (sicelore_bulk_tpm[, 7] + sicelore_bulk_tpm[, 8]) / 2
+sicelore_bulk_tpm <- sicelore_bulk_tpm[, 1:7]
+colnames(sicelore_bulk_tpm) <- bulk_sample_names
+sicelore_bulk_tpm <- sicelore_bulk_tpm[, bulk_sample_order]
+sicelore_bulk_tpm <- fill_missing_matrix(sicelore_bulk_tpm,
+                                         rownames(sicelore_pseudobulk_tpm))
+sicelore_bulk_tpm <- t(
+    t(sicelore_bulk_tpm) / colSums(sicelore_bulk_tpm) * 1e6
+)
+```
+
+Select top transcripts for further analysis:
+```{r, message = FALSE, warning = FALSE}
+top_transcripts <- get_hvts(sicelore_sc_counts)
+```
+
+Re-normalize the TPM values:
+```{r, message = FALSE, warning = FALSE}
+sicelore_bulk_tpm <- sicelore_bulk_tpm[top_transcripts,]
+sicelore_pseudobulk_tpm <- sicelore_pseudobulk_tpm[top_transcripts,]
+sicelore_bulk_tpm <- t(
+    t(sicelore_bulk_tpm) / colSums(sicelore_bulk_tpm) * 1e6
+)
+sicelore_pseudobulk_tpm <- t(
+    t(sicelore_pseudobulk_tpm) / colSums(sicelore_pseudobulk_tpm) * 1e6
+)
+```
+
+Calculate the correlation matrices:
+```{r, message = FALSE, warning = FALSE}
+cor_spearman <- cor(sicelore_pseudobulk_tpm[top_transcripts,],
+                    sicelore_bulk_tpm[top_transcripts,],
+                    method = "spearman")
+mean_rel_diff <- get_mean_rel_diff_matrix(
+    sicelore_pseudobulk_tpm[top_transcripts,],
+    sicelore_bulk_tpm[top_transcripts,]
+)
+```
+
+Spearman correlation matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(cor_spearman)
+```
+
+Spearman correlation heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    cor_spearman,
+    color = heatmap_palette(100, direction = heatmap_palette_direction),
+    breaks = seq(min_cor_spearman, max_cor_spearman, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+Mean relative difference matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(mean_rel_diff)
+```
+
+Mean relative difference heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    mean_rel_diff,
+    color = heatmap_palette(100, direction = -1),
+    breaks = seq(min_mean_rel_diff, max_mean_rel_diff, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+TPM scatter plots:
+```{r, message = FALSE, warning = FALSE}
+scatterplot_df <- prepare_scatterplot_data(sicelore_bulk_tpm,
+                                           sicelore_pseudobulk_tpm)
+scatterplot_df$tool <- "Sicelore"
+scatterplot_df_list[["Sicelore"]] <- scatterplot_df
+create_scatterplot_paired(scatterplot_df)
+create_scatterplot_combined(scatterplot_df)
+```
+
+# Summary barplots
+
+Prepare summary barplot data:
+```{r, message = FALSE, warning = FALSE}
+plot_df <- do.call(rbind, scatterplot_df_list)
+rownames(plot_df) <- NULL
+plot_df$tool <- factor(plot_df$tool, levels = c("Isosceles", "IsoQuant",
+                                                "FLAMES", "Sicelore"))
+plot_df <- plot_df %>%
+    group_by(tool, sample_bulk, sample_pseudobulk) %>%
+    summarise(
+        status = unique(status),
+        corr_spearman = cor(tpm_bulk, tpm_pseudobulk,
+                            method = "spearman"),
+        mean_rel_diff = get_mean_rel_diff(tpm_bulk, tpm_pseudobulk)
+    ) %>%
+    ungroup()
+test_values_df <- plot_df %>%
+    group_by(tool, sample_pseudobulk, status) %>%
+    summarise(
+        corr_spearman = mean(corr_spearman),
+        mean_rel_diff = mean(mean_rel_diff)
+    ) %>%
+    ungroup() %>%
+    mutate(
+        status = gsub("Correct vs ", "", status)
+    ) %>%
+    pivot_wider(id_cols = c(tool, sample_pseudobulk),
+                names_from = status,
+                values_from = c(corr_spearman, mean_rel_diff)) %>%
+    transmute(
+        tool = tool,
+        sample_pseudobulk = sample_pseudobulk,
+        corr_spearman = abs(corr_spearman_Correct - corr_spearman_Decoy),
+        mean_rel_diff = abs(mean_rel_diff_Correct - mean_rel_diff_Decoy)
+    )
+plot_df <- plot_df %>%
+    group_by(tool, status) %>%
+    summarise(
+        corr_spearman_avg = mean(corr_spearman),
+        corr_spearman_se = sd(corr_spearman) / sqrt(n()),
+        mean_rel_diff_avg = mean(mean_rel_diff),
+        mean_rel_diff_se = sd(mean_rel_diff) / sqrt(n())
+    ) %>%
+    ungroup()
+```
+
+Summary barplot (Spearman correlation):
+```{r, message = FALSE, warning = FALSE}
+ggplot(plot_df, mapping = aes(x = tool,
+                              y = corr_spearman_avg,
+                              fill = status)) +
+    geom_col(position = position_dodge(), color = "black", width = 0.5) +
+    geom_errorbar(
+        mapping = aes(ymin = corr_spearman_avg - corr_spearman_se,
+                      ymax = corr_spearman_avg + corr_spearman_se),
+        width = 0.1,
+        color = "black",
+        position = position_dodge(0.5)
+    ) + 
+    scale_fill_manual(values = c(`Correct vs Correct` = "grey",
+                                 `Correct vs Decoy` = "darkred")) +
+    coord_cartesian(ylim = c(0, 1)) +
+    labs(y = "Correlation",
+         fill = "") +
+    theme_classic() +
+    theme(legend.position = "top",
+          legend.key.size = unit(0.4, "cm"),
+          aspect.ratio = 1,
+          axis.title.x = element_blank(),
+          axis.text.x = element_text(size = 8))
+```
+
+Summary barplot (mean relative difference):
+```{r, message = FALSE, warning = FALSE}
+ggplot(plot_df, mapping = aes(x = tool,
+                              y = mean_rel_diff_avg,
+                              fill = status)) +
+    geom_col(position = position_dodge(), color = "black", width = 0.5) +
+    geom_errorbar(
+        mapping = aes(ymin = mean_rel_diff_avg - mean_rel_diff_se,
+                      ymax = mean_rel_diff_avg + mean_rel_diff_se),
+        width = 0.1,
+        color = "black",
+        position = position_dodge(0.5)
+    ) + 
+    scale_fill_manual(values = c(`Correct vs Correct` = "grey",
+                                 `Correct vs Decoy` = "darkred")) +
+    coord_cartesian(ylim = c(0, max_mean_rel_diff + 0.1)) +
+    labs(y = "Mean rel. diff.",
+         fill = "") +
+    theme_classic() +
+    theme(legend.position = "top",
+          legend.key.size = unit(0.4, "cm"),
+          aspect.ratio = 1,
+          axis.title.x = element_blank(),
+          axis.text.x = element_text(size = 8))
+```
+
+Metric difference and CI table:
+```{r, message = FALSE, warning = FALSE, rows.print = 21}
+get_diff_value <- function(x) {
+    return(abs(x[1] - x[2]))
+}
+get_diff_sd <- function(x) {
+    return(sqrt(sum(x ** 2)))
+}
+get_ci_factor <- function(x) {
+    qnorm(1 - (1 - x)/2)
+}
+diff_df <- plot_df %>%
+    group_by(tool) %>%
+    summarise(
+        corr_spearman = get_diff_value(corr_spearman_avg),
+        corr_spearman_upper_ci_95 = get_diff_value(corr_spearman_avg) +
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.95)),
+        corr_spearman_lower_ci_95 = get_diff_value(corr_spearman_avg) -
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.95)),
+        corr_spearman_upper_ci_90 = get_diff_value(corr_spearman_avg) +
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.90)),
+        corr_spearman_lower_ci_90 = get_diff_value(corr_spearman_avg) -
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.90)),
+        corr_spearman_upper_ci_68 = get_diff_value(corr_spearman_avg) +
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.68)),
+        corr_spearman_lower_ci_68 = get_diff_value(corr_spearman_avg) -
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.68)),
+        mean_rel_diff = get_diff_value(mean_rel_diff_avg),
+        mean_rel_diff_upper_ci_95 = get_diff_value(mean_rel_diff_avg) +
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.95)),
+        mean_rel_diff_lower_ci_95 = get_diff_value(mean_rel_diff_avg) -
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.95)),
+        mean_rel_diff_upper_ci_90 = get_diff_value(mean_rel_diff_avg) +
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.90)),
+        mean_rel_diff_lower_ci_90 = get_diff_value(mean_rel_diff_avg) -
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.90)),
+        mean_rel_diff_upper_ci_68 = get_diff_value(mean_rel_diff_avg) +
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.68)),
+        mean_rel_diff_lower_ci_68 = get_diff_value(mean_rel_diff_avg) -
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.68))
+    )
+diff_df <- as.data.frame(diff_df)
+rownames(diff_df) <- diff_df$tool
+diff_df$tool <- NULL
+diff_df <- as.data.frame(t(diff_df))
+write.csv(diff_df, file.path(csv_dir, glue("data_{top_n_hvts}_hvts.csv")))
+write.csv(
+    test_values_df,
+    file.path(csv_dir,glue("test_values_{top_n_hvts}_hvts.csv")),
+    row.names = FALSE
+)
+diff_df
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

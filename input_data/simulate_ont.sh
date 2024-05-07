@@ -86,3 +86,62 @@ samtools sort -o bam_sim/truncated_scrnaseq.bam \
   bam_sim/truncated_scrnaseq_unsorted.bam
 samtools index bam_sim/truncated_scrnaseq.bam
 rm -f bam_sim/truncated_scrnaseq_unsorted.bam
+
+# Simulate reads (ovarian cell line analysis Rep1, scRNA-Seq error model)
+conda activate isosceles_nanosim
+mkdir -p nanosim_results
+for sample_id in SK-OV-3 IGROV-1 OVMANA OVKATE OVTOKO COV362; do
+simulator.py transcriptome \
+  -t $ncpu --fastq --no_model_ir -b albacore -r cDNA_1D \
+  -n 10000000 \
+  -c read_models/scrnaseq/training \
+  -rt ../reference_data/simulated_transcript_sequences.fasta \
+  -e ../reference_data/simulated_transcript_expression_${sample_id}.tab \
+  -o nanosim_results/${sample_id}_Rep1
+done
+conda deactivate
+
+# Simulate reads (ovarian cell line analysis Rep2, bulk RNA-Seq error model)
+conda activate isosceles_nanosim
+mkdir -p nanosim_results
+for sample_id in SK-OV-3 IGROV-1 OVMANA OVKATE OVTOKO COV362; do
+simulator.py transcriptome \
+  -t $ncpu --fastq --no_model_ir -b albacore -r cDNA_1D \
+  -n 10000000 \
+  -c read_models/bulk_rnaseq/training \
+  -rt ../reference_data/simulated_transcript_sequences.fasta \
+  -e ../reference_data/simulated_transcript_expression_${sample_id}.tab \
+  -o nanosim_results/${sample_id}_Rep2
+done
+conda deactivate
+
+# Select the first 5 million aligned reads from the simulated data
+# (ovarian cell line analysis)
+for sample_id in SK-OV-3 IGROV-1 OVMANA OVKATE OVTOKO COV362; do
+for rep_id in `seq 2`; do
+cat nanosim_results/${sample_id}_Rep${rep_id}_aligned_reads.fastq | \
+  head -n 20000000 | gzip -c > \
+  fastq_sim/${sample_id}_Rep${rep_id}.fastq.gz
+done
+done
+
+# Simulate Nanopore scRNA-Seq BAM files (ovarian cell line analysis)
+## Align Nanopore reads to the reference genome with minimap2
+mkdir -p bam
+for sample_id in SK-OV-3 IGROV-1 OVMANA OVKATE OVTOKO COV362; do
+../software/bin/minimap2 -t $ncpu \
+  -ax splice --secondary=no \
+  --junc-bed ../reference_data/simulated_known_introns.bed --junc-bonus 15 \
+  ../reference_data/genome.fasta \
+  fastq_sim/${sample_id}_Rep1.fastq.gz \
+  | samtools sort -o bam/${sample_id}_Rep1.bam
+samtools index bam/${sample_id}_Rep1.bam
+done
+## Add cell barcode and UMI tags to the BAM files
+conda activate isosceles_nanocount
+python add_bam_tags_ovarian.py
+conda deactivate
+## Index the scRNA-Seq (Rep1) BAM files
+for sample_id in SK-OV-3 IGROV-1 OVMANA OVKATE OVTOKO COV362; do
+samtools index bam_sim/${sample_id}_Rep1.bam
+done

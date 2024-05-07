@@ -1,0 +1,173 @@
+---
+title: "Nanopore bulk RNA-Seq and scRNA-Seq data benchmarks (top highly variable transcripts results summary)"
+output:
+  html_document:
+    highlight: pygments
+    df_print: paged
+    toc: true
+    toc_depth: 2
+---
+
+# Preparing the data
+
+Load the required packages:
+```{r, message = FALSE}
+library(tidyverse)
+library(glue)
+```
+
+Global parameters:
+```{r, message = FALSE, warning = FALSE}
+csv_dir <- "nanopore_bulk_sc_benchmarks_hvts_data"
+top_n_hvts_values <- c(500, 1000, 2000, 4000, 6000, 10000)
+```
+
+Prepare plot data:
+```{r, message = FALSE, warning = FALSE}
+plot_df_list <- lapply(top_n_hvts_values, function(top_n_hvts) {
+    plot_df <- read.csv(file.path(
+        csv_dir, glue("data_{top_n_hvts}_hvts.csv")
+    ), row.names = 1)
+    plot_df <- as.data.frame(t(plot_df))
+    plot_df$tool <- rownames(plot_df)
+    rownames(plot_df) <- NULL
+    plot_df$top_n_hvts <- top_n_hvts
+    plot_df <- plot_df %>%
+        select("tool", "top_n_hvts", "corr_spearman",
+               "corr_spearman_upper_ci_95", "corr_spearman_lower_ci_95",
+                "corr_spearman_upper_ci_90", "corr_spearman_lower_ci_90",
+               "corr_spearman_upper_ci_68", "corr_spearman_lower_ci_68",
+               "mean_rel_diff",
+               "mean_rel_diff_upper_ci_95", "mean_rel_diff_lower_ci_95",
+               "mean_rel_diff_upper_ci_90", "mean_rel_diff_lower_ci_90",
+               "mean_rel_diff_upper_ci_68", "mean_rel_diff_lower_ci_68")
+    return(plot_df)
+})
+plot_df <- do.call(rbind, plot_df_list)
+cor_spearman_fc_df <- plot_df %>%
+    select("tool", "top_n_hvts", "corr_spearman") %>%
+    pivot_wider(names_from = tool, values_from = corr_spearman) %>%
+    transmute(
+        IsoQuant = Isosceles / IsoQuant,
+        FLAMES = Isosceles / FLAMES,
+        Sicelore = Isosceles / Sicelore
+    )
+cor_spearman_fc_df <- data.frame(
+    median_fc = apply(cor_spearman_fc_df, 2, median),
+    max_fc = apply(cor_spearman_fc_df, 2, max)
+)
+mean_rel_diff_fc_df <- plot_df %>%
+    select("tool", "top_n_hvts", "mean_rel_diff") %>%
+    pivot_wider(names_from = tool, values_from = mean_rel_diff) %>%
+    transmute(
+        IsoQuant = Isosceles / IsoQuant,
+        FLAMES = Isosceles / FLAMES,
+        Sicelore = Isosceles / Sicelore
+    )
+mean_rel_diff_fc_df <- data.frame(
+    median_fc = apply(mean_rel_diff_fc_df, 2, median),
+    max_fc = apply(mean_rel_diff_fc_df, 2, max)
+)
+test_df_list <- lapply(top_n_hvts_values, function(top_n_hvts) {
+    test_df <- read.csv(file.path(
+        csv_dir, glue("test_values_{top_n_hvts}_hvts.csv")
+    ))
+    test_df$top_n_hvts <- top_n_hvts
+    return(test_df)
+})
+test_df <- do.call(rbind, test_df_list)
+corr_spearman_isosceles <- filter(test_df, tool == "Isosceles") %>%
+    pull(corr_spearman)
+mean_rel_diff_isosceles <- filter(test_df, tool == "Isosceles") %>%
+    pull(mean_rel_diff)
+wilcox_pvalue <- function(x, y) {
+    wilcox.test(x, y, paired = TRUE)$p.value
+}
+test_df <- test_df %>%
+    filter(tool != "Isosceles") %>%
+    group_by(tool) %>%
+    summarise(
+        corr_spearman_pvalue = wilcox_pvalue(corr_spearman,
+                                             corr_spearman_isosceles),
+        mean_rel_diff_pvalue = wilcox_pvalue(mean_rel_diff,
+                                             mean_rel_diff_isosceles)
+    ) %>%
+    as.data.frame()
+rownames(test_df) <- test_df$tool
+test_df$tool <- NULL
+test_df <- test_df[c("IsoQuant", "FLAMES", "Sicelore"),]
+cor_spearman_fc_df$pvalue <- test_df$corr_spearman_pvalue
+mean_rel_diff_fc_df$pvalue <- test_df$mean_rel_diff_pvalue
+```
+
+# Results
+
+Matched - decoy fold-change statistics (Spearman correlation):
+```{r, message = FALSE, warning = FALSE}
+cor_spearman_fc_df
+```
+
+Matched - decoy fold-change statistics (mean relative difference):
+```{r, message = FALSE, warning = FALSE}
+mean_rel_diff_fc_df
+```
+
+Matched - decoy plot (Spearman correlation, standard error interval):
+```{r, message = FALSE, warning = FALSE}
+ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
+    geom_line(mapping = aes(y = corr_spearman,
+                            col = tool),
+              size = 1) +
+    geom_ribbon(mapping = aes(ymin = corr_spearman_lower_ci_68,
+                              ymax = corr_spearman_upper_ci_68,
+                              fill = tool),
+                alpha = 0.1) +
+    scale_color_manual(values = c(Isosceles = "black",
+                                  IsoQuant = "gold",
+                                  FLAMES = "tomato",
+                                  Sicelore = "royalblue")) +
+    scale_fill_manual(values = c(Isosceles = "black",
+                                 IsoQuant = "gold",
+                                 FLAMES = "tomato",
+                                 Sicelore = "royalblue")) +
+    labs(
+        x = "Top N variable transcripts",
+        y = "Matched - decoy (correlation)"
+    ) +
+    theme_bw() +
+    theme(aspect.ratio = 1,
+          legend.title = element_blank())
+```
+
+Matched - decoy plot (mean relative difference, standard error interval):
+```{r, message = FALSE, warning = FALSE}
+ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
+    geom_line(mapping = aes(y = mean_rel_diff,
+                            col = tool),
+              size = 1) +
+    geom_ribbon(mapping = aes(ymin = mean_rel_diff_lower_ci_68,
+                              ymax = mean_rel_diff_upper_ci_68,
+                              fill = tool),
+                alpha = 0.1) +
+    scale_color_manual(values = c(Isosceles = "black",
+                                  IsoQuant = "gold",
+                                  FLAMES = "tomato",
+                                  Sicelore = "royalblue")) +
+    scale_fill_manual(values = c(Isosceles = "black",
+                                 IsoQuant = "gold",
+                                 FLAMES = "tomato",
+                                 Sicelore = "royalblue")) +
+    labs(
+        x = "Top N variable transcripts",
+        y = "Matched - decoy (mean rel. diff.)"
+    ) +
+    theme_bw() +
+    theme(aspect.ratio = 1,
+          legend.title = element_blank())
+```
+
+# Session Info
+
+```{r}
+sessionInfo()
+```

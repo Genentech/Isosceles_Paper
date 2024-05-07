@@ -707,30 +707,29 @@ plot_df <- plot_df %>%
     group_by(tool, status) %>%
     summarise(
         corr_spearman_avg = mean(corr_spearman),
-        corr_spearman_sd = sd(corr_spearman),
+        corr_spearman_se = sd(corr_spearman) / sqrt(n()),
         mean_rel_diff_avg = mean(mean_rel_diff),
-        mean_rel_diff_sd = sd(mean_rel_diff)
+        mean_rel_diff_se = sd(mean_rel_diff) / sqrt(n())
     ) %>%
     ungroup()
 ```
 
-Summary barplot (Spearman correlation)
+Summary barplot (Spearman correlation):
 ```{r, message = FALSE, warning = FALSE}
 ggplot(plot_df, mapping = aes(x = tool,
                               y = corr_spearman_avg,
                               fill = status)) +
     geom_col(position = position_dodge(), color = "black", width = 0.5) +
     geom_errorbar(
-        mapping = aes(ymin = corr_spearman_avg - corr_spearman_sd,
-                      ymax = corr_spearman_avg + corr_spearman_sd),
+        mapping = aes(ymin = corr_spearman_avg - corr_spearman_se,
+                      ymax = corr_spearman_avg + corr_spearman_se),
         width = 0.1,
         color = "black",
         position = position_dodge(0.5)
     ) + 
     scale_fill_manual(values = c(`Correct vs Correct` = "grey",
                                  `Correct vs Decoy` = "darkred")) +
-    coord_cartesian(ylim = c(min_cor_spearman - 0.1,
-                             max_cor_spearman + 0.1)) +
+    coord_cartesian(ylim = c(0, 1)) +
     labs(y = "Correlation",
          fill = "") +
     theme_classic() +
@@ -741,23 +740,22 @@ ggplot(plot_df, mapping = aes(x = tool,
           axis.text.x = element_text(size = 8))
 ```
 
-Summary barplot (mean relative difference)
+Summary barplot (mean relative difference):
 ```{r, message = FALSE, warning = FALSE}
 ggplot(plot_df, mapping = aes(x = tool,
                               y = mean_rel_diff_avg,
                               fill = status)) +
     geom_col(position = position_dodge(), color = "black", width = 0.5) +
     geom_errorbar(
-        mapping = aes(ymin = mean_rel_diff_avg - mean_rel_diff_sd,
-                      ymax = mean_rel_diff_avg + mean_rel_diff_sd),
+        mapping = aes(ymin = mean_rel_diff_avg - mean_rel_diff_se,
+                      ymax = mean_rel_diff_avg + mean_rel_diff_se),
         width = 0.1,
         color = "black",
         position = position_dodge(0.5)
     ) + 
     scale_fill_manual(values = c(`Correct vs Correct` = "grey",
                                  `Correct vs Decoy` = "darkred")) +
-    coord_cartesian(ylim = c(min_mean_rel_diff - 0.1,
-                             max_mean_rel_diff + 0.1)) +
+    coord_cartesian(ylim = c(0, max_mean_rel_diff + 0.1)) +
     labs(y = "Mean rel. diff.",
          fill = "") +
     theme_classic() +
@@ -784,30 +782,30 @@ diff_df <- plot_df %>%
     summarise(
         corr_spearman = get_diff_value(corr_spearman_avg),
         corr_spearman_upper_ci_95 = get_diff_value(corr_spearman_avg) +
-            (get_diff_sd(corr_spearman_sd) * get_ci_factor(0.95)),
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.95)),
         corr_spearman_lower_ci_95 = get_diff_value(corr_spearman_avg) -
-            (get_diff_sd(corr_spearman_sd) * get_ci_factor(0.95)),
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.95)),
         corr_spearman_upper_ci_90 = get_diff_value(corr_spearman_avg) +
-            (get_diff_sd(corr_spearman_sd) * get_ci_factor(0.90)),
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.90)),
         corr_spearman_lower_ci_90 = get_diff_value(corr_spearman_avg) -
-            (get_diff_sd(corr_spearman_sd) * get_ci_factor(0.90)),
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.90)),
         corr_spearman_upper_ci_68 = get_diff_value(corr_spearman_avg) +
-            (get_diff_sd(corr_spearman_sd) * get_ci_factor(0.68)),
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.68)),
         corr_spearman_lower_ci_68 = get_diff_value(corr_spearman_avg) -
-            (get_diff_sd(corr_spearman_sd) * get_ci_factor(0.68)),
+            (get_diff_sd(corr_spearman_se) * get_ci_factor(0.68)),
         mean_rel_diff = get_diff_value(mean_rel_diff_avg),
         mean_rel_diff_upper_ci_95 = get_diff_value(mean_rel_diff_avg) +
-            (get_diff_sd(mean_rel_diff_sd) * get_ci_factor(0.95)),
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.95)),
         mean_rel_diff_lower_ci_95 = get_diff_value(mean_rel_diff_avg) -
-            (get_diff_sd(mean_rel_diff_sd) * get_ci_factor(0.95)),
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.95)),
         mean_rel_diff_upper_ci_90 = get_diff_value(mean_rel_diff_avg) +
-            (get_diff_sd(mean_rel_diff_sd) * get_ci_factor(0.90)),
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.90)),
         mean_rel_diff_lower_ci_90 = get_diff_value(mean_rel_diff_avg) -
-            (get_diff_sd(mean_rel_diff_sd) * get_ci_factor(0.90)),
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.90)),
         mean_rel_diff_upper_ci_68 = get_diff_value(mean_rel_diff_avg) +
-            (get_diff_sd(mean_rel_diff_sd) * get_ci_factor(0.68)),
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.68)),
         mean_rel_diff_lower_ci_68 = get_diff_value(mean_rel_diff_avg) -
-            (get_diff_sd(mean_rel_diff_sd) * get_ci_factor(0.68))
+            (get_diff_sd(mean_rel_diff_se) * get_ci_factor(0.68))
     )
 diff_df <- as.data.frame(diff_df)
 rownames(diff_df) <- diff_df$tool

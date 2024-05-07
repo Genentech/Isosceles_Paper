@@ -29,6 +29,7 @@ saveRDS(bam_parsed, file.path(result_dir, "bam_parsed.rds"))
 
 # Preparing transcript set
 min_intron_length <- 30
+max_intron_length <- 5e6
 known_intron_motifs <- c("GT-AG")
 rescue_annotated_introns <- FALSE
 min_bam_intron_read_count <- 2
@@ -39,6 +40,7 @@ transcript_data <- prepare_transcripts(
     gtf_file = gtf_file, genome_fasta_file = genome_fasta_file,
     bam_parsed = bam_parsed,
     min_intron_length = min_intron_length,
+    max_intron_length = max_intron_length,
     known_intron_motifs = known_intron_motifs,
     rescue_annotated_introns = rescue_annotated_introns,
     known_intron_granges = known_intron_granges,

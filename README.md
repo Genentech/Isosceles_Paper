@@ -28,6 +28,9 @@ cd ..
 cd simulated_sc_analysis
 bash download_report_data.sh
 cd ..
+cd simulated_ovarian_analysis
+bash download_report_data.sh
+cd ..
 cd nanopore_bulk_analysis
 bash download_report_data.sh
 cd ..
@@ -38,6 +41,9 @@ cd sirv_analysis
 bash download_report_data.sh
 cd ..
 cd sequin_analysis
+bash download_report_data.sh
+cd ..
+cd pacbio_analysis
 bash download_report_data.sh
 cd ..
 ```
@@ -126,6 +132,9 @@ cd ..
 cd simulated_sc_analysis
 bash run.sh
 cd ..
+cd simulated_ovarian_analysis
+bash run.sh
+cd ..
 cd illumina_sc_analysis
 bash run.sh
 cd ..
@@ -141,6 +150,9 @@ cd ..
 cd sequin_analysis
 bash run.sh
 cd ..
+cd pacbio_analysis
+bash run.sh
+cd ..
 ```
 
 Finally to prepare the data for the analysis scripts in `reports`, as used in Part #1, you can run the `prepare_report_data.sh` (or `prepare_report_data.R`, depending on the directory) scripts:
@@ -149,6 +161,9 @@ cd simulated_bulk_analysis
 singularity exec ../singularity/isosceles.sif Rscript prepare_report_data.R
 cd ..
 cd simulated_sc_analysis
+bash prepare_report_data.sh
+cd ..
+cd simulated_ovarian_analysis
 bash prepare_report_data.sh
 cd ..
 cd nanopore_bulk_analysis
@@ -161,6 +176,9 @@ cd sirv_analysis
 bash prepare_report_data.sh
 cd ..
 cd sequin_analysis
+bash prepare_report_data.sh
+cd ..
+cd pacbio_analysis
 bash prepare_report_data.sh
 cd ..
 ```

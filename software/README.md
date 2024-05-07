@@ -15,3 +15,4 @@
   * gcc and g++
   * CMake and make
   * zlib
+  * Nextflow (>= 23.04.4)
