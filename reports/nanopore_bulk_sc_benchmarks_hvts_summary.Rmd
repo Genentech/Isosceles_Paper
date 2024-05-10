@@ -44,6 +44,15 @@ plot_df_list <- lapply(top_n_hvts_values, function(top_n_hvts) {
     return(plot_df)
 })
 plot_df <- do.call(rbind, plot_df_list)
+cor_spearman_hvts_fc_df <- plot_df %>%
+    select("tool", "top_n_hvts", "corr_spearman") %>%
+    pivot_wider(names_from = tool, values_from = corr_spearman) %>%
+    mutate(
+        IsoQuant = Isosceles / IsoQuant,
+        FLAMES = Isosceles / FLAMES,
+        Sicelore = Isosceles / Sicelore
+    ) %>%
+    select(-"Isosceles")
 cor_spearman_fc_df <- plot_df %>%
     select("tool", "top_n_hvts", "corr_spearman") %>%
     pivot_wider(names_from = tool, values_from = corr_spearman) %>%
@@ -56,6 +65,15 @@ cor_spearman_fc_df <- data.frame(
     median_fc = apply(cor_spearman_fc_df, 2, median),
     max_fc = apply(cor_spearman_fc_df, 2, max)
 )
+mean_rel_diff_hvts_fc_df <- plot_df %>%
+    select("tool", "top_n_hvts", "mean_rel_diff") %>%
+    pivot_wider(names_from = tool, values_from = mean_rel_diff) %>%
+    mutate(
+        IsoQuant = Isosceles / IsoQuant,
+        FLAMES = Isosceles / FLAMES,
+        Sicelore = Isosceles / Sicelore
+    ) %>%
+    select(-"Isosceles")
 mean_rel_diff_fc_df <- plot_df %>%
     select("tool", "top_n_hvts", "mean_rel_diff") %>%
     pivot_wider(names_from = tool, values_from = mean_rel_diff) %>%
@@ -102,9 +120,19 @@ mean_rel_diff_fc_df$pvalue <- test_df$mean_rel_diff_pvalue
 
 # Results
 
+Matched - decoy fold-change values (Spearman correlation):
+```{r, message = FALSE, warning = FALSE}
+cor_spearman_hvts_fc_df
+```
+
 Matched - decoy fold-change statistics (Spearman correlation):
 ```{r, message = FALSE, warning = FALSE}
 cor_spearman_fc_df
+```
+
+Matched - decoy fold-change values (mean relative difference):
+```{r, message = FALSE, warning = FALSE}
+mean_rel_diff_hvts_fc_df
 ```
 
 Matched - decoy fold-change statistics (mean relative difference):
@@ -130,13 +158,18 @@ ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
                                  IsoQuant = "gold",
                                  FLAMES = "tomato",
                                  Sicelore = "royalblue")) +
+    scale_x_continuous(
+        breaks = c(500, 1000, 2000, 4000, 6000, 10000),
+        labels = c("500", "1k", "2k", "4k", "6k", "10k")
+    ) +
     labs(
         x = "Top N variable transcripts",
         y = "Matched - decoy (correlation)"
     ) +
     theme_bw() +
     theme(aspect.ratio = 1,
-          legend.title = element_blank())
+          legend.title = element_blank(),
+          axis.text.x = element_text(size = 7, hjust = 0.85))
 ```
 
 Matched - decoy plot (mean relative difference, standard error interval):
@@ -157,13 +190,18 @@ ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
                                  IsoQuant = "gold",
                                  FLAMES = "tomato",
                                  Sicelore = "royalblue")) +
+    scale_x_continuous(
+        breaks = c(500, 1000, 2000, 4000, 6000, 10000),
+        labels = c("500", "1k", "2k", "4k", "6k", "10k")
+    ) +
     labs(
         x = "Top N variable transcripts",
         y = "Matched - decoy (mean rel. diff.)"
     ) +
     theme_bw() +
     theme(aspect.ratio = 1,
-          legend.title = element_blank())
+          legend.title = element_blank(),
+          axis.text.x = element_text(size = 7, hjust = 0.85))
 ```
 
 # Session Info
