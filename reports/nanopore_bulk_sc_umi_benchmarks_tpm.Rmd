@@ -541,6 +541,84 @@ diff_df <- as.data.frame(t(diff_df))
 diff_df
 ```
 
+Matched - decoy barplot (Spearman correlation):
+```{r, message = FALSE, warning = FALSE}
+plot_df <- as.data.frame(t(diff_df))
+plot_df$tool <- fct_rev(factor(
+    rownames(plot_df), levels = c("Sicelore", "wf_single_cell")
+))
+ggplot(plot_df, mapping = aes(x = corr_spearman,
+                              y = tool,
+                              fill = tool)) +
+    geom_col(color = "black", width = 0.5) +
+    geom_errorbar(
+        mapping = aes(xmin = corr_spearman_lower_ci_68,
+                      xmax = corr_spearman_upper_ci_68),
+        width = 0.1,
+        color = "black",
+        position = position_dodge(0.5)
+    ) +
+    geom_text(
+        aes(label = format(round(corr_spearman, 2), nsmall = 2)),
+        size = 3,
+        nudge_x = 0.02,
+        hjust = "outward"
+    ) +
+    scale_fill_manual(values = c(Sicelore = "royalblue",
+                                 `wf_single_cell` = "grey")) +
+    lims(x = c(0, 0.2)) +
+    labs(
+        x = "Matched - decoy (correlation)",
+        y = ""
+    ) +
+    theme_classic() +
+    theme(legend.position = "none",
+          axis.text = element_text(size = 7),
+          axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 9),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank())
+```
+
+Matched - decoy barplot (mean relative difference):
+```{r, message = FALSE, warning = FALSE}
+plot_df <- as.data.frame(t(diff_df))
+plot_df$tool <- fct_rev(factor(
+    rownames(plot_df), levels = c("Sicelore", "wf_single_cell")
+))
+ggplot(plot_df, mapping = aes(x = mean_rel_diff,
+                              y = tool,
+                              fill = tool)) +
+    geom_col(color = "black", width = 0.5) +
+    geom_errorbar(
+        mapping = aes(xmin = mean_rel_diff_lower_ci_68,
+                      xmax = mean_rel_diff_upper_ci_68),
+        width = 0.1,
+        color = "black",
+        position = position_dodge(0.5)
+    ) +
+    geom_text(
+        aes(label = format(round(mean_rel_diff, 2), nsmall = 2)),
+        size = 3,
+        nudge_x = 0.02,
+        hjust = "outward"
+    ) +
+    scale_fill_manual(values = c(Sicelore = "royalblue",
+                                 `wf_single_cell` = "grey")) +
+    lims(x = c(0, 0.17)) +
+    labs(
+        x = "Matched - decoy (mean rel. diff.)",
+        y = ""
+    ) +
+    theme_classic() +
+    theme(legend.position = "none",
+          axis.text = element_text(size = 7),
+          axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 9),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank())
+```
+
 # Session Info
 
 ```{r}
