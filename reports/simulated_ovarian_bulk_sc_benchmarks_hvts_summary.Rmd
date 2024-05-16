@@ -52,7 +52,7 @@ cor_spearman_hvts_fc_df <- plot_df %>%
         FLAMES = Isosceles / FLAMES,
         Sicelore = Isosceles / Sicelore
     ) %>%
-    select(-"Isosceles")
+    select(-"Ground_truth", -"Isosceles")
 cor_spearman_fc_df <- plot_df %>%
     select("tool", "top_n_hvts", "corr_spearman") %>%
     pivot_wider(names_from = tool, values_from = corr_spearman) %>%
@@ -73,7 +73,7 @@ mean_rel_diff_hvts_fc_df <- plot_df %>%
         FLAMES = Isosceles / FLAMES,
         Sicelore = Isosceles / Sicelore
     ) %>%
-    select(-"Isosceles")
+    select(-"Ground_truth", -"Isosceles")
 mean_rel_diff_fc_df <- plot_df %>%
     select("tool", "top_n_hvts", "mean_rel_diff") %>%
     pivot_wider(names_from = tool, values_from = mean_rel_diff) %>%
@@ -144,24 +144,34 @@ Matched - decoy plot (Spearman correlation, standard error interval):
 ```{r, message = FALSE, warning = FALSE}
 ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
     geom_line(mapping = aes(y = corr_spearman,
-                            col = tool),
+                            col = tool,
+                            linetype = tool),
               size = 1) +
     geom_ribbon(mapping = aes(ymin = corr_spearman_lower_ci_68,
                               ymax = corr_spearman_upper_ci_68,
                               fill = tool),
                 alpha = 0.1) +
-    scale_color_manual(values = c(Isosceles = "black",
+    scale_color_manual(values = c(Ground_truth = "darkgrey",
+                                  Isosceles = "black",
                                   IsoQuant = "gold",
                                   FLAMES = "tomato",
                                   Sicelore = "royalblue")) +
-    scale_fill_manual(values = c(Isosceles = "black",
+    scale_fill_manual(values = c(Ground_truth = "darkgrey",
+                                 Isosceles = "black",
                                  IsoQuant = "gold",
                                  FLAMES = "tomato",
                                  Sicelore = "royalblue")) +
+    scale_linetype_manual(values = c(Ground_truth = "dashed",
+                                     Isosceles = "solid",
+                                     IsoQuant = "solid",
+                                     FLAMES = "solid",
+                                     Sicelore = "solid"),
+                          guide = "none") +
     scale_x_continuous(
         breaks = c(500, 1000, 2000, 4000, 6000, 10000),
         labels = c("500", "1k", "2k", "4k", "6k", "10k")
     ) +
+    coord_cartesian(ylim = c(0, NA)) +
     labs(
         x = "Top N variable transcripts",
         y = "Matched - decoy (correlation)"
@@ -176,24 +186,34 @@ Matched - decoy plot (mean relative difference, standard error interval):
 ```{r, message = FALSE, warning = FALSE}
 ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
     geom_line(mapping = aes(y = mean_rel_diff,
-                            col = tool),
+                            col = tool,
+                            linetype = tool),
               size = 1) +
     geom_ribbon(mapping = aes(ymin = mean_rel_diff_lower_ci_68,
                               ymax = mean_rel_diff_upper_ci_68,
                               fill = tool),
                 alpha = 0.1) +
-    scale_color_manual(values = c(Isosceles = "black",
+    scale_color_manual(values = c(Ground_truth = "darkgrey",
+                                  Isosceles = "black",
                                   IsoQuant = "gold",
                                   FLAMES = "tomato",
                                   Sicelore = "royalblue")) +
-    scale_fill_manual(values = c(Isosceles = "black",
+    scale_fill_manual(values = c(Ground_truth = "darkgrey",
+                                 Isosceles = "black",
                                  IsoQuant = "gold",
                                  FLAMES = "tomato",
                                  Sicelore = "royalblue")) +
+    scale_linetype_manual(values = c(Ground_truth = "dashed",
+                                     Isosceles = "solid",
+                                     IsoQuant = "solid",
+                                     FLAMES = "solid",
+                                     Sicelore = "solid"),
+                          guide = "none") +
     scale_x_continuous(
         breaks = c(500, 1000, 2000, 4000, 6000, 10000),
         labels = c("500", "1k", "2k", "4k", "6k", "10k")
     ) +
+    coord_cartesian(ylim = c(0, NA)) +
     labs(
         x = "Top N variable transcripts",
         y = "Matched - decoy (mean rel. diff.)"

@@ -162,6 +162,7 @@ ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
         breaks = c(500, 1000, 2000, 4000, 6000, 10000),
         labels = c("500", "1k", "2k", "4k", "6k", "10k")
     ) +
+    coord_cartesian(ylim = c(0, NA)) +
     labs(
         x = "Top N variable transcripts",
         y = "Matched - decoy (correlation)"
@@ -194,6 +195,7 @@ ggplot(plot_df, mapping = aes(x = top_n_hvts)) +
         breaks = c(500, 1000, 2000, 4000, 6000, 10000),
         labels = c("500", "1k", "2k", "4k", "6k", "10k")
     ) +
+    coord_cartesian(ylim = c(0, NA)) +
     labs(
         x = "Top N variable transcripts",
         y = "Matched - decoy (mean rel. diff.)"

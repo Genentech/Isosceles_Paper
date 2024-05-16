@@ -27,6 +27,7 @@ Global parameters:
 csv_dir <- "simulated_ovarian_bulk_sc_benchmarks_hvts_data"
 dir.create(csv_dir, recursive = TRUE)
 result_dir <- file.path("..", "simulated_ovarian_analysis", "report_data")
+reference_dir <- file.path("..", "reference_data")
 sample_ids <- c("SK-OV-3", "IGROV-1", "OVMANA", "OVKATE",
                 "OVTOKO", "COV362")
 top_n_hvts <- 10000
@@ -183,6 +184,87 @@ create_scatterplot_combined <- function(plot_df) {
               axis.title.y = element_blank())
     return(scatter_plot)
 }
+```
+
+# Ground truth correlation plots
+
+Prepare ground truth expression data:
+```{r, message = FALSE, warning = FALSE}
+ground_truth_list <- lapply(sample_ids, function(sample_id) {
+    ground_truth_df <- read_delim(file.path(
+        reference_dir, glue("simulated_transcript_expression_{sample_id}.tab")
+    ))
+    ground_truth_sample_tpm <- setNames(
+        ground_truth_df$tpm, ground_truth_df$target_id
+    )
+    return(ground_truth_sample_tpm)
+})
+ground_truth_tpm <- do.call(cbind, ground_truth_list)
+colnames(ground_truth_tpm) <- sample_ids
+```
+
+Select top transcripts for further analysis:
+```{r, message = FALSE, warning = FALSE}
+top_transcripts <- get_hvts(ground_truth_tpm)
+```
+
+Re-normalize the TPM values:
+```{r, message = FALSE, warning = FALSE}
+ground_truth_tpm <- ground_truth_tpm[top_transcripts,]
+ground_truth_tpm <- t(
+    t(ground_truth_tpm) / colSums(ground_truth_tpm) * 1e6
+)
+```
+
+Calculate the correlation matrices:
+```{r, message = FALSE, warning = FALSE}
+cor_spearman <- cor(ground_truth_tpm[top_transcripts,],
+                    ground_truth_tpm[top_transcripts,],
+                    method = "spearman")
+mean_rel_diff <- get_mean_rel_diff_matrix(
+    ground_truth_tpm[top_transcripts,],
+    ground_truth_tpm[top_transcripts,]
+)
+```
+
+Spearman correlation matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(cor_spearman)
+```
+
+Spearman correlation heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    cor_spearman,
+    color = heatmap_palette(100, direction = heatmap_palette_direction),
+    breaks = seq(min_cor_spearman, max_cor_spearman, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+Mean relative difference matrix:
+```{r, message = FALSE, warning = FALSE}
+as.data.frame(mean_rel_diff)
+```
+
+Mean relative difference heatmap:
+```{r, message = FALSE, warning = FALSE}
+pheatmap(
+    mean_rel_diff,
+    color = heatmap_palette(100, direction = -1),
+    breaks = seq(min_mean_rel_diff, max_mean_rel_diff, length.out = 101),
+    cluster_rows = FALSE, cluster_cols = FALSE
+)
+```
+
+TPM scatter plots:
+```{r, message = FALSE, warning = FALSE}
+scatterplot_df <- prepare_scatterplot_data(ground_truth_tpm,
+                                           ground_truth_tpm)
+scatterplot_df$tool <- "Ground_truth"
+scatterplot_df_list[["Ground_truth"]] <- scatterplot_df
+create_scatterplot_paired(scatterplot_df)
+create_scatterplot_combined(scatterplot_df)
 ```
 
 # Isosceles bulk-pseudobulk correlation plots
@@ -762,8 +844,9 @@ Prepare summary barplot data:
 ```{r, message = FALSE, warning = FALSE}
 plot_df <- do.call(rbind, scatterplot_df_list)
 rownames(plot_df) <- NULL
-plot_df$tool <- factor(plot_df$tool, levels = c("Isosceles", "IsoQuant",
-                                                "FLAMES", "Sicelore"))
+plot_df$tool <- factor(plot_df$tool, levels = c(
+    "Ground_truth", "Isosceles", "IsoQuant", "FLAMES", "Sicelore"
+))
 plot_df <- plot_df %>%
     group_by(tool, sample_bulk, sample_pseudobulk) %>%
     summarise(
@@ -774,6 +857,7 @@ plot_df <- plot_df %>%
     ) %>%
     ungroup()
 test_values_df <- plot_df %>%
+    filter(tool != "Ground_truth") %>%
     group_by(tool, sample_pseudobulk, status) %>%
     summarise(
         corr_spearman = mean(corr_spearman),

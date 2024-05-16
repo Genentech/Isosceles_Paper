@@ -17,8 +17,8 @@
   * **simulated_ovarian_bulk_sc_benchmarks_hvts_summary.Rmd** - Simulated ovarian cell line bulk RNA-Seq and scRNA-Seq data benchmarks (top highly variable transcripts results summary)
   * **simulated_ovarian_bulk_sc_benchmarks_tpm.Rmd** - Simulated ovarian cell line bulk RNA-Seq and scRNA-Seq data benchmarks (all >= 1 TPM transcripts)
   * **nanopore_sc_umi_benchmarks.Rmd** - Nanopore scRNA-Seq Sicelore UMI vs wf-single-cell UMI benchmarks
-  * **nanopore_bulk_sc_umi_benchmarks_tpm.Rmd** - Nanopore bulk RNA-Seq and scRNA-Seq Sicelore UMI vs wf-single-cell UMI benchmarks (all >= 1 TPM transcripts)
   * **nanopore_bulk_sc_umi_benchmarks_hvts_4000.Rmd** - Nanopore bulk RNA-Seq and scRNA-Seq Sicelore UMI vs wf-single-cell UMI benchmarks (4000 top highly variable transcripts)
+  * **nanopore_bulk_sc_umi_benchmarks_tpm.Rmd** - Nanopore bulk RNA-Seq and scRNA-Seq Sicelore UMI vs wf-single-cell UMI benchmarks (all >= 1 TPM transcripts)
   * **nanopore_bulk_igrov_mean_rel_diff.Rmd** - Nanopore IGROV-1 bulk RNA-Seq mean relative difference benchmarks
   * **nanopore_bulk_sc_igrov_mean_rel_diff.Rmd** - Nanopore IGROV-1 bulk RNA-Seq and scRNA-Seq mean relative difference benchmarks
   * **nanopore_bulk_sc_igrov_cor.Rmd** - Nanopore IGROV-1 bulk RNA-Seq and scRNA-Seq correlation benchmarks
