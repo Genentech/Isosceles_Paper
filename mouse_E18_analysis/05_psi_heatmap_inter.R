@@ -282,7 +282,7 @@ psi_heatmap <- pheatmap(
     fontsize_row = 5, treeheight_row = 0,
     scale = "row"
 )
-ggsave("results/psi_heatmap_inter_0000.pdf",
+ggsave("results/psi_heatmap_inter.pdf",
        psi_heatmap, height = 3.1, width = 7.1)
 
 ################################################################################

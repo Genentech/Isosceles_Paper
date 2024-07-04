@@ -335,7 +335,7 @@ heatmap_gene_set <- pheatmap(
     fontsize_row = 8,
     scale = "row"
 )
-ggsave("results/heatmap_marker_gene_sets_000.pdf", heatmap_gene_set,
+ggsave("results/heatmap_marker_gene_sets.pdf", heatmap_gene_set,
        height = 5, width = 7)
 
 sce_gene_marker <- sce_gene
