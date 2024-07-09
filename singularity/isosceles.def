@@ -5,4 +5,4 @@ From: bioconductor/bioconductor_docker:RELEASE_3_15
     Rscript -e 'BiocManager::install(c("scran", "scater", "uwot", "dittoSeq", "DEXSeq", "Nebulosa", "slingshot", "pdftools", "ggbio", "ggnewscale", "BiocStyle", "fastmatch", "RcppArmadillo", "tidyverse"), update = TRUE, ask = FALSE)'
     Rscript -e 'install.packages(c("poolr", "irlba", "ggrastr"), repos = "https://cran.r-project.org")'
     Rscript -e 'devtools::install_github("powellgenomicslab/Nebulosa", upgrade = FALSE)'
-    Rscript -e 'devtools::install_github("timbitz/Isosceles", ref = "0.2.0", dependencies = TRUE, upgrade = TRUE, INSTALL_opts = "--install-tests")'
+    Rscript -e 'devtools::install_github("Genentech/Isosceles", ref = "0.2.0", dependencies = TRUE, upgrade = TRUE, INSTALL_opts = "--install-tests")'
