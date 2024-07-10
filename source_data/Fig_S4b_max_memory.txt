@@ -1,0 +1,12 @@
+tool	max_memory
+Isosceles	6.1
+IsoQuant	19.8
+Bambu	5.7
+Flair	6.6
+NanoCount	3.8
+LIQA	1.7
+ESPRESSO	29.2
+FLAMES	10
+Sicelore	8.2
+minimap2	24.6
+minimap2_trans	5.4

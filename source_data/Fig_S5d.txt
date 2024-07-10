@@ -1,0 +1,7 @@
+metric	Sicelore	wf_single_cell
+corr_spearman	0.2611795	0.1608034
+corr_spearman_upper_ci	0.2835075	0.1762672
+corr_spearman_lower_ci	0.2388514	0.1453397
+mean_rel_diff	0.2205323	0.1449444
+mean_rel_diff_upper_ci	0.2535920	0.1773506
+mean_rel_diff_lower_ci	0.1874726	0.1125382

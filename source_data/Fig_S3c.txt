@@ -1,0 +1,10 @@
+tool	metric	value
+Isosceles	Precision	1
+Isosceles	Recall	0.6440677966101694
+Isosceles	F1	0.7835051546391752
+IsoQuant	Precision	0.9069767441860465
+IsoQuant	Recall	0.6610169491525424
+IsoQuant	F1	0.7647058823529411
+Bambu	Precision	1
+Bambu	Recall	0.6271186440677966
+Bambu	F1	0.7708333333333334

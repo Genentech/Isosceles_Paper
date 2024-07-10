@@ -1,0 +1,25 @@
+Event	Sample	PSI_value	Subgroup
+Celf2:i12:A3	Embr_E11_FNP	11.87	Neural crest (E11)
+Celf2:i12:A3	Embr_E11_Md	11.63	Neural crest (E11)
+Celf2:i12:A3	Embr_E11_Mx	4.1	Neural crest (E11)
+Celf2:i12:A3	Embr_E11_PA2	4.75	Neural crest (E11)
+Celf2:i12:A3	NPC_a	9.94	NPC
+Celf2:i12:A3	NPC_c	7.92	NPC
+Celf2:i12:A3	NPC_d	9.7	NPC
+Celf2:i12:A3	Embr_Brain_E11_5	10.02	Brain (E11.5)
+Celf2:i12:A3	Embr_Brain_E14_5	18.73	Brain (E14.5)
+Celf2:i12:A3	Embr_Cortex_E17_5	38.57	Cortex (E17.5)
+Celf2:i12:A3	Cortex_a	67.8	Cortex
+Celf2:i12:A3	Cortex_b	46.55	Cortex
+Celf2:i12:A5	Embr_E11_FNP	54.36	Neural crest (E11)
+Celf2:i12:A5	Embr_E11_Md	52.82	Neural crest (E11)
+Celf2:i12:A5	Embr_E11_Mx	73.88	Neural crest (E11)
+Celf2:i12:A5	Embr_E11_PA2	54.64	Neural crest (E11)
+Celf2:i12:A5	NPC_a	47.62	NPC
+Celf2:i12:A5	NPC_c	33.9	NPC
+Celf2:i12:A5	NPC_d	46.95	NPC
+Celf2:i12:A5	Embr_Brain_E11_5	35.23	Brain (E11.5)
+Celf2:i12:A5	Embr_Brain_E14_5	28.28	Brain (E14.5)
+Celf2:i12:A5	Embr_Cortex_E17_5	13.22	Cortex (E17.5)
+Celf2:i12:A5	Cortex_a	0.78	Cortex
+Celf2:i12:A5	Cortex_b	7.72	Cortex

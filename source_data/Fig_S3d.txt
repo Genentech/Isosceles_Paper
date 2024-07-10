@@ -1,0 +1,16 @@
+tool	class	count
+Isosceles TP	TP_KNOWN	37
+IsoQuant TP	TP_KNOWN	32
+Bambu TP	TP_KNOWN	37
+Isosceles TP	TP_NOVEL	1
+IsoQuant TP	TP_NOVEL	7
+Bambu TP	TP_NOVEL	0
+Isosceles FP/FN	FN_KNOWN	0
+IsoQuant FP/FN	FN_KNOWN	5
+Bambu FP/FN	FN_KNOWN	0
+Isosceles FP/FN	FN_NOVEL	21
+IsoQuant FP/FN	FN_NOVEL	15
+Bambu FP/FN	FN_NOVEL	22
+Isosceles FP/FN	FP	0
+IsoQuant FP/FN	FP	4
+Bambu FP/FN	FP	0

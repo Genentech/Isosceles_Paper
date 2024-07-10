@@ -1,0 +1,17 @@
+Event	Sample	PSI_value	Subgroup
+HsaALTA0001766-2/2	NPC_a	18.61	NPC
+HsaALTA0001766-2/2	NPC_b	22.85	NPC
+HsaALTA0001766-2/2	Embr_Forebrain_St13_14	18.87	Forebrain (St13-14)
+HsaALTA0001766-2/2	Embr_Forebrain_St17_20	28.12	Forebrain (St17-20)
+HsaALTA0001766-2/2	Embr_Forebrain_St22_23	27.79	Forebrain (St22-23)
+HsaALTA0001766-2/2	Embr_Forebrain_9_12wpc	41.04	Forebrain (9-12 wpc)
+HsaALTA0001766-2/2	Embr_Cortex_13_17wpc	52.65	Cortex (13-17 wpc)
+HsaALTA0001766-2/2	Cortex	61.54	Cortex
+HsaALTD0001351-2/2	NPC_a	40.64	NPC
+HsaALTD0001351-2/2	NPC_b	31.0	NPC
+HsaALTD0001351-2/2	Embr_Forebrain_St13_14	53.09	Forebrain (St13-14)
+HsaALTD0001351-2/2	Embr_Forebrain_St17_20	30.25	Forebrain (St17-20)
+HsaALTD0001351-2/2	Embr_Forebrain_St22_23	28.42	Forebrain (St22-23)
+HsaALTD0001351-2/2	Embr_Forebrain_9_12wpc	14.81	Forebrain (9-12 wpc)
+HsaALTD0001351-2/2	Embr_Cortex_13_17wpc	12.66	Cortex (13-17 wpc)
+HsaALTD0001351-2/2	Cortex	8.19	Cortex

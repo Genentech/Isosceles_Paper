@@ -1,0 +1,13 @@
+Event	Subgroup	Num_replicates	PSI_mean_value	PSI_std_error
+Celf2:i12:A3	Neural crest (E11)	4	8.0875	2.119270216371664
+Celf2:i12:A3	NPC	3	9.186666666666666	0.637111537417987
+Celf2:i12:A3	Brain (E11.5)	1	10.02	0.0
+Celf2:i12:A3	Brain (E14.5)	1	18.73	0.0
+Celf2:i12:A3	Cortex (E17.5)	1	38.57	0.0
+Celf2:i12:A3	Cortex	2	57.175	10.625
+Celf2:i12:A5	Neural crest (E11)	4	58.925	5.001029060770059
+Celf2:i12:A5	NPC	3	42.82333333333333	4.465856891770916
+Celf2:i12:A5	Brain (E11.5)	1	35.23	0.0
+Celf2:i12:A5	Brain (E14.5)	1	28.28	0.0
+Celf2:i12:A5	Cortex (E17.5)	1	13.22	0.0
+Celf2:i12:A5	Cortex	2	4.25	3.4699999999999993

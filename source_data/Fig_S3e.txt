@@ -1,0 +1,4 @@
+tool	read_precision
+Isosceles	0.9578301602314738
+IsoQuant	0.9861620048310138
+Bambu	0.9672186329136441
